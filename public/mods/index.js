@@ -6,3 +6,5 @@ import './markets.js';
 import './portfolio.js';
 import './macro.js';
 import './research.js';
+import './company.js';
+import './holders.js';

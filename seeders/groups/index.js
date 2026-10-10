@@ -8,5 +8,6 @@ import india from './india.js';
 import weco from './weco.js';
 import cbrates from './cbrates.js';
 import credit from './credit.js';
-const groups = [...universe, crypto2, xasset, mkt2, india, weco, cbrates, credit];
+import funds from './funds.js';
+const groups = [...universe, crypto2, xasset, mkt2, india, weco, cbrates, credit, funds];
 export default groups;

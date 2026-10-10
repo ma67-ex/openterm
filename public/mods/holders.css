@@ -1,0 +1,20 @@
+.holders-tbl{width:100%;border-collapse:collapse}
+.holders-tbl td{color:var(--txt)}
+.holders-tbl td.holders-l{text-align:left}
+.holders-tbl td.holders-t{color:var(--mute);text-align:left;white-space:nowrap}
+.holders-tbl a{color:var(--blue);text-decoration:none}
+.holders-tbl a:hover{text-decoration:underline}
+.holders-tbl tr.holders-pick{cursor:pointer}
+.holders-tbl tr.holders-pick:hover td{background:#161616}
+.holders-sym{color:var(--blue);cursor:pointer}
+.holders-sym:hover{text-decoration:underline}
+.holders-h{color:var(--amber);font-weight:700;letter-spacing:.5px;padding:8px 8px 2px}
+.holders-head{padding:6px 8px;font-size:14px}
+.holders-head b{color:var(--amber)}
+.holders-note{color:var(--mute);padding:3px 8px;font-size:11px}
+.holders-bar{display:flex;height:16px;margin:4px 8px;border:1px solid var(--line);background:#0e0e0e}
+.holders-bar div{height:100%}
+.holders-seg-known{background:var(--amber)}
+.holders-key{color:var(--mute);padding:0 8px;font-size:11px}
+.holders-key b{color:var(--amber)}
+.holders-tbl td.up,.holders-tbl td.dn{font-weight:700}
