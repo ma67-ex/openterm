@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import snap from './api/snap.js';
 import chart from './api/chart.js';
 
-try { process.loadEnvFile(fileURLToPath(new URL('.env', import.meta.url))); } catch {}
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = process.env.PORT || 3200;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
