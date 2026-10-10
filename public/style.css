@@ -69,3 +69,6 @@ tr:hover td{background:#0f0f0f}
 #statusbar #sbclock{margin-left:auto}
 
 @media(max-width:1000px){body{overflow:auto}#grid{display:block}.panel{height:260px;margin-bottom:2px}}
+
+td.up,#tape i.up{color:var(--up)}td.dn,#tape i.dn,#sbdata.dn{color:var(--dn)}td.px{color:var(--txt)}
+td{white-space:nowrap}
