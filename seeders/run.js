@@ -4,8 +4,9 @@ import { mget, set, incrBy, getNum, stats, usingUpstash } from '../lib/redis.js'
 import { GROUPS, SNAP_TTL, DAILY_BUDGET } from './config.js';
 import { fetchRows } from './yahoo.js';
 import { fetchCurve, fetchCalendar } from './fred.js';
+import { fetchNews } from './news.js';
 
-const FETCH = { yahoo: (c) => fetchRows(c.rows), 'fred-curve': fetchCurve, 'fred-calendar': fetchCalendar };
+const FETCH = { yahoo: (c) => fetchRows(c.rows), 'fred-curve': fetchCurve, 'fred-calendar': fetchCalendar, news: fetchNews };
 
 const force = process.argv.includes('--force');
 const now = new Date();
@@ -22,6 +23,7 @@ for (const [key, cfg] of Object.entries(GROUPS)) {
   if (!force && when === 'weekday' && !weekday) { console.log(`${key}: market closed, skip`); continue; }
   // hours-gated groups run in the first 20 minutes of their hours, so a late or skipped cron run still gets a second try
   if (!force && hours && !(hours.includes(now.getUTCHours()) && now.getUTCMinutes() < 20)) continue;
+  if (!force && cfg.everyMin && now.getUTCMinutes() % cfg.everyMin >= 10) continue;
   if (overBudget && !['indices', 'watchlist'].includes(key)) continue;
   let data;
   try { data = await FETCH[cfg.source](cfg); } catch (e) { console.log(`${key}: ${e.message}`); continue; }

@@ -62,6 +62,9 @@ tr:hover td{background:#0f0f0f}
 .chart-wrap .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--mute);letter-spacing:2px}
 .news-line{display:flex;gap:8px;padding:3px 6px;border-bottom:1px solid #101010;color:#444}
 .news-line i{font-style:normal;color:var(--amber-dim);flex:none}
+.news-line b{font-weight:normal;color:var(--amber);flex:none}
+.news-line a{color:var(--txt);text-decoration:none}
+.news-line a:hover{text-decoration:underline}
 .skel{height:8px;background:#161616;flex:1;align-self:center}
 
 #statusbar{display:flex;gap:18px;padding:2px 8px;background:var(--bar);color:var(--mute);font-size:11px;flex:none}
@@ -72,3 +75,12 @@ tr:hover td{background:#0f0f0f}
 
 td.up,#tape i.up{color:var(--up)}td.dn,#tape i.dn,#sbdata.dn{color:var(--dn)}td.px{color:var(--txt)}
 td{white-space:nowrap}
+
+/* fundamentals (FA / DES) */
+table.fa td{color:var(--txt)}
+table.fa td:first-child{color:var(--blue)}
+table.fa td.fa-txt{text-align:left}
+table.fa tr.fa-sec td{color:var(--amber);font-weight:700;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-top:6px}
+table.fa td.fa-neg{color:var(--dn)}
+table.fa a{color:var(--blue)}
+.fa-src{color:var(--mute);font-size:10px;padding:4px 6px}

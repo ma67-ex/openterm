@@ -37,7 +37,7 @@ tick(); setInterval(tick, 1000);
 $('cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
 
 // ---- live data: one /api/snap call fills every panel ----
-const KEYS = ['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar'];
+const KEYS = ['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar', 'news'];
 const fmt = (n, d = 2) => (n == null ? '--' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const cls = (n) => (n > 0 ? 'up' : n < 0 ? 'dn' : '');
 const sgn = (n, d = 2) => (n == null ? '--' : (n > 0 ? '+' : '') + fmt(n, d));
@@ -95,6 +95,16 @@ function fillCalendar(snap) {
   body.innerHTML = snap.rows.map((r) => `<tr><td>${r.d.slice(5)}</td><td style="text-align:left;color:var(--txt);max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis" title="${r.e}">${r.e}</td></tr>`).join('');
 }
 
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const hhmm = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+function fillNews(snap) {
+  const box = document.querySelector('.panel:nth-child(3) .pb');
+  if (!box || !snap?.rows?.length) return;
+  box.innerHTML = snap.rows.filter((r) => /^https?:\/\//i.test(r.u)).map((r) =>
+    `<div class="news-line"><i>${hhmm(r.ts)}</i><b>${esc(r.s)}</b><a href="${esc(r.u)}" target="_blank" rel="noopener noreferrer">${esc(r.t)}</a></div>`).join('');
+}
+
 async function refresh() {
   try {
     const data = await (await fetch(`/api/snap?keys=${KEYS.join(',')}`)).json();
@@ -102,6 +112,7 @@ async function refresh() {
     fillTape(data);
     drawCurve(data.curve);
     fillCalendar(data.calendar);
+    fillNews(data.news);
     const times = ['watchlist', 'indices', 'fx', 'cmdty'].map((k) => data[k]?.asOf).filter(Boolean).sort();
     const oldest = times[0];
     $('sbdata').textContent = oldest ? `Data as of ${new Date(oldest).toLocaleString()} (free sources, delayed)` : 'No snapshots yet. Run: npm run seed';
@@ -132,7 +143,11 @@ async function drawChart(sym) {
   } catch { box.innerHTML = '<div class="chart-wrap"><div class="empty">NO DATA FOR ' + sym + '</div></div>'; }
 }
 $('go').addEventListener('click', () => {
-  const sym = $('cmd').value.trim().toUpperCase().split(/\s+/)[0];
+  const [a, b] = $('cmd').value.trim().toUpperCase().split(/\s+/);
   $('cmd').value = '';
-  if (sym && sym !== 'HELP') drawChart(sym);
+  const fn = ['FA', 'DES'].includes(b) ? b : ['FA', 'DES'].includes(a) ? a : null;
+  const sym = fn === b ? a : b;
+  if (fn && sym && !['FA', 'DES'].includes(sym)) import('./fundamentals.js').then((m) => (fn === 'FA' ? m.showFA(sym) : m.showDES(sym)));
+  else if (a === 'HELP') $('sbdata').textContent = 'Commands: AAPL (chart), AAPL FA (financials), AAPL DES (company description)';
+  else if (a) drawChart(a);
 });

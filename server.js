@@ -5,11 +5,12 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import snap from './api/snap.js';
 import chart from './api/chart.js';
+import fundamentals from './api/fundamentals.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = process.env.PORT || 3200;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
-const api = { '/api/snap': snap, '/api/chart': chart };
+const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals };
 
 createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');

@@ -9,6 +9,8 @@ export const GROUPS = {
   // FRED publishes the curve once a day (US evening); 4 tries a day is plenty.
   curve: { when: 'weekday', source: 'fred-curve', hours: [13, 19, 21, 23] },
   calendar: { when: 'always', source: 'fred-calendar', hours: [6] },
+  // cron runs every 10 min; minutes % 15 < 10 gives roughly one run per 15-20 min
+  news: { when: 'always', source: 'news', everyMin: 15 },
 };
 export const SNAP_TTL = 7 * 86400; // long TTL: data must survive weekends, staleness is shown via asOf
 export const DAILY_BUDGET = Number(process.env.DAILY_BUDGET) || 16000;
