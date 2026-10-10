@@ -26,7 +26,7 @@ const PANELS = [
   ['4', 'WEI  World Equity Indices', 'WEI', 1, 3, 4, 3, table(['Index', 'Last', 'Chg', '%Chg'], 12, ['SPX', 'INDU', 'CCMP', 'RTY', 'UKX', 'DAX', 'CAC', 'NKY', 'HSI', 'SHCOMP', 'SENSEX', 'NIFTY'])],
   ['5', 'FXC  Currencies', 'FXC', 4, 3, 4, 3, table(['Pair', 'Bid', 'Ask', '%Chg'], 6, ['EURUSD', 'USDJPY', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD'])],
   ['6', 'GC  Yield Curve', 'GC', 7, 3, 4, 3, chart('NO DATA')],
-  ['7', 'ECO  Economic Calendar', 'ECO', 10, 3, 3, 2, table(['Event', 'Actual', 'Survey', 'Prior'], 8)],
+  ['7', 'ECO  Economic Calendar', 'ECO', 10, 3, 3, 2, table(['Date', 'Release'], 8)],
   ['8', 'CMDTY  Commodities', 'CMDTY', 10, 3, 5, 2, table(['Name', 'Last', 'Chg', '%Chg', 'YTD%'], 5, ['CL1 Crude', 'CO1 Brent', 'NG1 Natgas', 'GC1 Gold', 'HG1 Copper'])],
 ];
 $('grid').innerHTML = PANELS.map(([n, title, hint, c, cs, r, rs, body]) =>
@@ -37,7 +37,7 @@ tick(); setInterval(tick, 1000);
 $('cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
 
 // ---- live data: one /api/snap call fills every panel ----
-const KEYS = ['watchlist', 'indices', 'fx', 'cmdty', 'crypto'];
+const KEYS = ['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar'];
 const fmt = (n, d = 2) => (n == null ? '--' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const cls = (n) => (n > 0 ? 'up' : n < 0 ? 'dn' : '');
 const sgn = (n, d = 2) => (n == null ? '--' : (n > 0 ? '+' : '') + fmt(n, d));
@@ -68,12 +68,41 @@ function fillTape(data) {
   $('tape-track').innerHTML = t + t;
 }
 
+// ---- yield curve (panel 6) and calendar (panel 7) ----
+function drawCurve(snap) {
+  const box = document.querySelector('.panel:nth-child(6) .pb');
+  if (!snap || !box) return;
+  box.innerHTML = '<canvas style="width:100%;height:100%"></canvas>';
+  const c = box.querySelector('canvas'), r = c.getBoundingClientRect(), k = devicePixelRatio || 1;
+  c.width = r.width * k; c.height = r.height * k;
+  const g = c.getContext('2d'); g.scale(k, k);
+  const rows = snap.rows, W = r.width, H = r.height, padL = 30, padB = 16, padT = 10;
+  const ys = rows.flatMap((p) => [p.y, p.prev]).filter((v) => v != null);
+  const lo = Math.min(...ys) - 0.1, hi = Math.max(...ys) + 0.1;
+  const X = (i) => padL + (i / (rows.length - 1)) * (W - padL - 8), Y = (v) => H - padB - ((v - lo) / (hi - lo)) * (H - padB - padT);
+  g.font = '10px monospace'; g.fillStyle = '#777'; g.strokeStyle = '#222'; g.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) * i) / 3, y = Y(v); g.beginPath(); g.moveTo(padL, y); g.lineTo(W - 8, y); g.stroke(); g.fillText(v.toFixed(2), 0, y + 3); }
+  rows.forEach((p, i) => g.fillText(p.m, X(i) - 6, H - 3));
+  const line = (key, color) => { g.strokeStyle = color; g.lineWidth = 1.5; g.beginPath(); rows.forEach((p, i) => (i ? g.lineTo(X(i), Y(p[key])) : g.moveTo(X(i), Y(p[key])))); g.stroke(); };
+  if (rows.every((p) => p.prev != null)) line('prev', '#555');
+  line('y', '#ffb000');
+  document.querySelector('.panel:nth-child(6) h2').textContent = `GC  Yield Curve  ${rows[0].date ?? ''}`;
+}
+
+function fillCalendar(snap) {
+  const body = document.querySelector('.panel:nth-child(7) tbody');
+  if (!body || !snap) return;
+  body.innerHTML = snap.rows.map((r) => `<tr><td>${r.d.slice(5)}</td><td style="text-align:left;color:var(--txt);max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis" title="${r.e}">${r.e}</td></tr>`).join('');
+}
+
 async function refresh() {
   try {
     const data = await (await fetch(`/api/snap?keys=${KEYS.join(',')}`)).json();
     Object.keys(PANEL_OF).forEach((k) => fillPanel(k, data[k]));
     fillTape(data);
-    const times = KEYS.map((k) => data[k]?.asOf).filter(Boolean).sort();
+    drawCurve(data.curve);
+    fillCalendar(data.calendar);
+    const times = ['watchlist', 'indices', 'fx', 'cmdty'].map((k) => data[k]?.asOf).filter(Boolean).sort();
     const oldest = times[0];
     $('sbdata').textContent = oldest ? `Data as of ${new Date(oldest).toLocaleString()} (free sources, delayed)` : 'No snapshots yet. Run: npm run seed';
     const stale = oldest && Date.now() - new Date(oldest) > 36 * 3600e3;
