@@ -1,0 +1,25 @@
+/* Wall: binary-split tiling layout */
+.wall{grid-column:1/-1;grid-row:1/-1;min-width:0;min-height:0;display:flex}
+.wall-split{display:grid;flex:1;min-width:0;min-height:0}
+.wall-split>*{min-width:0;min-height:0}
+.wall-split.v{grid-template-rows:minmax(0,1fr)}
+.wall-split.h{grid-template-columns:minmax(0,1fr)}
+.wall-div{background:var(--line);transition:background .12s}
+.wall-div:hover,.wall-div.drag{background:var(--amber-dim)}
+.wall-split.v>.wall-div{cursor:col-resize}
+.wall-split.h>.wall-div{cursor:row-resize}
+.wall-leaf{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;outline:1px solid transparent}
+.wall-leaf[data-ws]{outline-color:var(--amber-dim)}
+.wall-leaf .ph{gap:4px}
+.wall-leaf select,.wall-leaf input{background:#000;color:var(--amber);border:1px solid #333;font:inherit;font-size:11px;padding:1px 3px;text-transform:uppercase;min-width:0}
+.wall-leaf select{max-width:46%}
+.wall-leaf input{width:70px}
+.wall-leaf .ph .sp{flex:1}
+.wall-leaf .ph .wall-title{display:none}
+.wall-leaf .ph button{background:#222;color:var(--amber);border:0;padding:0 6px;font:inherit;font-size:11px;line-height:16px}
+.wall-leaf .ph button:hover{background:var(--amber);color:#000}
+/* keep the wall tiled on narrow screens (the page grid normally stacks panels) */
+@media(max-width:1000px){
+  #grid:has(.wall){display:grid;overflow:hidden}
+  #grid:has(.wall) .panel{height:auto;margin:0}
+}

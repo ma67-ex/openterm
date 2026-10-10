@@ -1,6 +1,6 @@
 // FA and DES views, rendered into the center chart panel from /api/fundamentals (SEC EDGAR).
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const panel = () => document.querySelector('.panel:nth-child(2)');
+const panel = () => document.querySelector('.panel[data-ws]') || document.querySelector('.panel:nth-child(2)');
 
 function open(title, html) {
   const p = panel();

@@ -1,6 +1,7 @@
 // Page layouts. Each panel is [widget id, col, col span, row, row span, ...widget args] on a 12-column grid.
 // The 2nd panel of every page is the workspace that commands (GP, FA, ...) draw into.
 import { $, widgets, mountWidget, msg } from './core.js';
+import { renderWall } from './mods/wall.js';
 
 export const PAGES = [
   { name: 'Home', rows: 6, panels: [['mon', 1, 3, 1, 3], ['gp', 4, 6, 1, 3, 'AAPL'], ['top', 10, 3, 1, 2], ['wei', 1, 3, 4, 3],
@@ -21,6 +22,7 @@ export const PAGES = [
     ['insider', 6, 4, 4, 3, 'AAPL'], ['eco', 10, 3, 4, 3]] },
   { name: 'Portfolio', rows: 6, panels: [['port', 1, 6, 1, 3], ['alrt', 7, 6, 1, 3], ['wl', 1, 4, 4, 3],
     ['halal', 5, 4, 4, 3], ['india', 9, 4, 4, 3]] },
+  { name: 'Wall', rows: 1, wall: true, panels: [] },
 ];
 
 export const slug = (n) => n.toLowerCase().replace(/\s+/g, '-');
@@ -56,6 +58,7 @@ export function showPage(q, force = false) {
   }
   const grid = $('grid');
   grid.style.gridTemplateRows = `repeat(${p.rows}, minmax(0, 1fr))`;
+  if (p.wall) { renderWall(grid); [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.p === slug(p.name))); document.dispatchEvent(new Event('pagechange')); return p; }
   grid.innerHTML = p.panels.map(([, c, cs, r, rs], i) =>
     `<section class="panel" style="grid-column:${c}/span ${cs};grid-row:${r}/span ${rs}"><div class="ph"><b>${i + 1}</b><h2></h2><span></span></div><div class="pb"></div></section>`).join('');
   p.panels.forEach(([id, , , , , ...args], i) => mount(grid.children[i], id, args));

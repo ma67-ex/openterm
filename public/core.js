@@ -18,7 +18,7 @@ export const status = (text, bad = false) => { $('sbdata').textContent = text; $
 
 // The big center panel (panel 2): commands render their view here.
 export function workspace(title, html) {
-  const p = document.querySelector('.panel:nth-child(2)');
+  const p = document.querySelector('.panel[data-ws]') || document.querySelector('.panel:nth-child(2)');
   p.querySelector('h2').textContent = title;
   const box = p.querySelector('.pb');
   if (html != null) box.innerHTML = html;
