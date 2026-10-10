@@ -74,3 +74,7 @@ export async function showDES(sym) {
     open(`DES  ${sym}  ${d.name ?? ''}`, desView(d));
   } catch { open(`DES  ${sym}`, msg(`EDGAR UNAVAILABLE FOR ${sym}`)); }
 }
+
+import { registerCommand } from '../core.js';
+registerCommand('FA', { help: 'AAPL FA  financial statements (SEC EDGAR)', run: ([sym]) => sym && showFA(sym) });
+registerCommand('DES', { help: 'AAPL DES  company description', run: ([sym]) => sym && showDES(sym) });

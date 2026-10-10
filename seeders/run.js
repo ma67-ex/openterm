@@ -26,7 +26,7 @@ for (const [key, cfg] of Object.entries(GROUPS)) {
   if (!force && cfg.everyMin && now.getUTCMinutes() % cfg.everyMin >= 10) continue;
   if (overBudget && !['indices', 'watchlist'].includes(key)) continue;
   let data;
-  try { data = await FETCH[cfg.source](cfg); } catch (e) { console.log(`${key}: ${e.message}`); continue; }
+  try { data = await (cfg.fetch ?? FETCH[cfg.source])(cfg); } catch (e) { console.log(`${key}: ${e.message}`); continue; }
   if (!data.length) { console.log(`${key}: no data`); continue; }
   const hash = createHash('sha1').update(JSON.stringify(data)).digest('hex');
   const [old] = await mget([`snap:${key}`]);

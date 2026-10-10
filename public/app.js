@@ -1,5 +1,6 @@
-// UI skeleton only: no data is fetched yet. Panels render empty placeholder rows.
-const $ = (id) => document.getElementById(id);
+// Home page layout and the shared snapshot refresh loop. Feature commands live in mods/.
+import { $, esc, fmt, cls, sgn, vol, hhmm, status, runCommand, snapKeys, useSnap, dispatchSnap, commands } from './core.js';
+import './mods/index.js';
 
 const FKEYS = ['HELP', 'PANEL', 'MONITOR', 'NEWS', 'EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY', 'MTGE', 'INDX', 'MENU'];
 $('fkeys').innerHTML = FKEYS.map((k, i) => `<button class="${i % 2 ? 'alt' : ''}">F${i + 1} ${k}</button>`).join('');
@@ -37,11 +38,7 @@ tick(); setInterval(tick, 1000);
 $('cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
 
 // ---- live data: one /api/snap call fills every panel ----
-const KEYS = ['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar', 'news'];
-const fmt = (n, d = 2) => (n == null ? '--' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
-const cls = (n) => (n > 0 ? 'up' : n < 0 ? 'dn' : '');
-const sgn = (n, d = 2) => (n == null ? '--' : (n > 0 ? '+' : '') + fmt(n, d));
-const vol = (v) => (v == null ? '--' : v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : v);
+['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar', 'news'].forEach((k) => snapKeys.add(k));
 const dec = (r) => (Math.abs(r.p) < 20 ? 4 : 2);
 
 const COLS = {
@@ -95,9 +92,6 @@ function fillCalendar(snap) {
   body.innerHTML = snap.rows.map((r) => `<tr><td>${r.d.slice(5)}</td><td style="text-align:left;color:var(--txt);max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis" title="${r.e}">${r.e}</td></tr>`).join('');
 }
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const hhmm = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-
 function fillNews(snap) {
   const box = document.querySelector('.panel:nth-child(3) .pb');
   if (!box || !snap?.rows?.length) return;
@@ -107,47 +101,24 @@ function fillNews(snap) {
 
 async function refresh() {
   try {
-    const data = await (await fetch(`/api/snap?keys=${KEYS.join(',')}`)).json();
+    const data = await (await fetch(`/api/snap?keys=${[...snapKeys].join(',')}`)).json();
     Object.keys(PANEL_OF).forEach((k) => fillPanel(k, data[k]));
     fillTape(data);
     drawCurve(data.curve);
     fillCalendar(data.calendar);
     fillNews(data.news);
+    dispatchSnap(data);
     const times = ['watchlist', 'indices', 'fx', 'cmdty'].map((k) => data[k]?.asOf).filter(Boolean).sort();
     const oldest = times[0];
-    $('sbdata').textContent = oldest ? `Data as of ${new Date(oldest).toLocaleString()} (free sources, delayed)` : 'No snapshots yet. Run: npm run seed';
     const stale = oldest && Date.now() - new Date(oldest) > 36 * 3600e3;
-    $('sbdata').classList.toggle('dn', Boolean(stale));
-  } catch { $('sbdata').textContent = 'Data unavailable'; }
+    status(oldest ? `Data as of ${new Date(oldest).toLocaleString()} (free sources, delayed)` : 'No snapshots yet. Run: npm run seed', Boolean(stale));
+  } catch { status('Data unavailable', true); }
 }
 refresh(); setInterval(refresh, 60000);
 
-// ---- chart panel: type a ticker in the command bar ----
-const chartPanel = () => document.querySelector('.panel:nth-child(2)');
-async function drawChart(sym) {
-  const p = chartPanel();
-  p.querySelector('h2').textContent = `GP  ${sym}`;
-  const box = p.querySelector('.pb');
-  box.innerHTML = '<canvas style="width:100%;height:100%"></canvas>';
-  try {
-    const d = await (await fetch(`/api/chart?s=${encodeURIComponent(sym)}&range=6mo`)).json();
-    const closes = d.chart.result[0].indicators.quote[0].close.filter((x) => x != null);
-    const c = box.querySelector('canvas'), r = c.getBoundingClientRect(), k = devicePixelRatio || 1;
-    c.width = r.width * k; c.height = r.height * k;
-    const g = c.getContext('2d'); g.scale(k, k);
-    const W = r.width, H = r.height, lo = Math.min(...closes), hi = Math.max(...closes);
-    g.strokeStyle = closes.at(-1) >= closes[0] ? '#2ecc71' : '#ff4d4d'; g.lineWidth = 1.5; g.beginPath();
-    closes.forEach((v, i) => { const x = (i / (closes.length - 1)) * (W - 52), y = H - 12 - ((v - lo) / (hi - lo || 1)) * (H - 24); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-    g.stroke(); g.fillStyle = '#888'; g.font = '11px monospace';
-    g.fillText(hi.toFixed(2), W - 50, 14); g.fillText(lo.toFixed(2), W - 50, H - 4);
-  } catch { box.innerHTML = '<div class="chart-wrap"><div class="empty">NO DATA FOR ' + sym + '</div></div>'; }
+// ---- command bar ----
+registerHelp();
+function registerHelp() {
+  commands.set('HELP', { help: 'HELP  list commands', run: () => status([...commands.entries()].filter(([k]) => k !== 'HELP').map(([, v]) => v.help).join('  |  ')) });
 }
-$('go').addEventListener('click', () => {
-  const [a, b] = $('cmd').value.trim().toUpperCase().split(/\s+/);
-  $('cmd').value = '';
-  const fn = ['FA', 'DES'].includes(b) ? b : ['FA', 'DES'].includes(a) ? a : null;
-  const sym = fn === b ? a : b;
-  if (fn && sym && !['FA', 'DES'].includes(sym)) import('./fundamentals.js').then((m) => (fn === 'FA' ? m.showFA(sym) : m.showDES(sym)));
-  else if (a === 'HELP') $('sbdata').textContent = 'Commands: AAPL (chart), AAPL FA (financials), AAPL DES (company description)';
-  else if (a) drawChart(a);
-});
+$('go').addEventListener('click', () => { const v = $('cmd').value; $('cmd').value = ''; runCommand(v); });

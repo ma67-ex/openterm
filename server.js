@@ -6,11 +6,12 @@ import { fileURLToPath } from 'node:url';
 import snap from './api/snap.js';
 import chart from './api/chart.js';
 import fundamentals from './api/fundamentals.js';
+import data from './api/data.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = process.env.PORT || 3200;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
-const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals };
+const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals, '/api/data': data };
 
 createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');

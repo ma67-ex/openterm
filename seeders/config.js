@@ -1,4 +1,5 @@
 // One snapshot per group. `when`: 'weekday' (Mon-Fri UTC) or 'always'. `hours`: UTC hours the group may run (default every run).
+import extra from './groups/index.js';
 const g = (when, rows) => ({ when, rows, source: 'yahoo' });
 export const GROUPS = {
   watchlist: g('weekday', [['AAPL', 'Apple'], ['MSFT', 'Microsoft'], ['NVDA', 'Nvidia'], ['AMZN', 'Amazon'], ['GOOGL', 'Alphabet'], ['META', 'Meta'], ['TSLA', 'Tesla'], ['JPM', 'JPMorgan']]),
@@ -12,5 +13,7 @@ export const GROUPS = {
   // cron runs every 10 min; minutes % 15 < 10 gives roughly one run per 15-20 min
   news: { when: 'always', source: 'news', everyMin: 15 },
 };
+// groups from seeders/groups/ are merged in; they bring their own fetch()
+for (const x of extra) GROUPS[x.key] = x;
 export const SNAP_TTL = 7 * 86400; // long TTL: data must survive weekends, staleness is shown via asOf
 export const DAILY_BUDGET = Number(process.env.DAILY_BUDGET) || 16000;
