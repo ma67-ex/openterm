@@ -1,59 +1,41 @@
+// UI skeleton only: no data is fetched yet. Panels render empty placeholder rows.
 const $ = (id) => document.getElementById(id);
-const WATCH = ['^GSPC', '^IXIC', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'BTC-USD', 'EURUSD=X', 'GC=F', 'CL=F'];
-let current = 'AAPL';
 
-const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
-const status = (m) => ($('status').textContent = m);
+const FKEYS = ['HELP', 'PANEL', 'MONITOR', 'NEWS', 'EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY', 'MTGE', 'INDX', 'MENU'];
+$('fkeys').innerHTML = FKEYS.map((k, i) => `<button class="${i % 2 ? 'alt' : ''}">F${i + 1} ${k}</button>`).join('');
 
-async function quote(s) {
-  const d = await getJSON(`/api/chart?s=${encodeURIComponent(s)}&range=5d&interval=1d`);
-  const m = d.chart.result[0].meta;
-  const prev = m.chartPreviousClose ?? m.previousClose;
-  return { s, price: m.regularMarketPrice, chg: ((m.regularMarketPrice - prev) / prev) * 100 };
-}
+const TAPE = ['SPX', 'INDU', 'CCMP', 'UKX', 'DAX', 'NKY', 'HSI', 'SHCOMP', 'SENSEX', 'EURUSD', 'USDJPY', 'GBPUSD', 'XAU', 'CL1', 'BTC', 'US10Y', 'VIX'];
+const tape = TAPE.map((s) => `<span>${s}<i>--</i></span>`).join('');
+$('tape-track').innerHTML = tape + tape;
 
-async function loadWatch() {
-  const rows = await Promise.allSettled(WATCH.map(quote));
-  $('watchlist').innerHTML = rows.map((r, i) => {
-    if (r.status !== 'fulfilled') return `<div class="row"><span>${WATCH[i]}</span><span>n/a</span></div>`;
-    const { s, price, chg } = r.value;
-    return `<div class="row" data-s="${s}"><span>${s}</span><span>${price.toFixed(2)} <b class="${chg >= 0 ? 'up' : 'dn'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</b></span></div>`;
-  }).join('');
-}
-
-async function drawChart(s) {
-  current = s;
-  $('charttitle').textContent = `CHART  ${s}`;
-  const d = await getJSON(`/api/chart?s=${encodeURIComponent(s)}&range=6mo&interval=1d`);
-  const closes = d.chart.result[0].indicators.quote[0].close.filter((x) => x != null);
-  const c = $('chart'), r = c.getBoundingClientRect(), dpr = devicePixelRatio || 1;
-  c.width = r.width * dpr; c.height = r.height * dpr;
-  const g = c.getContext('2d'); g.scale(dpr, dpr);
-  const W = r.width, H = r.height, min = Math.min(...closes), max = Math.max(...closes);
-  g.clearRect(0, 0, W, H);
-  g.strokeStyle = closes.at(-1) >= closes[0] ? '#2ecc71' : '#ff4d4d'; g.lineWidth = 1.5; g.beginPath();
-  closes.forEach((v, i) => { const x = (i / (closes.length - 1)) * (W - 50), y = H - 10 - ((v - min) / (max - min || 1)) * (H - 20); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-  g.stroke();
-  g.fillStyle = '#888'; g.font = '11px monospace';
-  g.fillText(max.toFixed(2), W - 48, 14); g.fillText(min.toFixed(2), W - 48, H - 4);
-}
-
-async function loadNews(s) {
-  const xml = new DOMParser().parseFromString(await (await fetch(`/api/news?s=${encodeURIComponent(s)}`)).text(), 'text/xml');
-  const items = [...xml.querySelectorAll('item')].slice(0, 20);
-  $('news').innerHTML = items.map((i) => `<a class="news" target="_blank" rel="noopener" href="${i.querySelector('link').textContent}">${i.querySelector('title').textContent}</a>`).join('') || 'No news.';
-}
-
-async function go(s) { try { status(`Loading ${s}...`); await Promise.all([drawChart(s), loadNews(s)]); status(`${s} loaded. Data: free sources, delayed.`); } catch (e) { status(`Error: ${e.message}`); } }
-
-$('cmd').addEventListener('keydown', async (e) => {
-  if (e.key !== 'Enter') return;
-  const [a, b] = e.target.value.trim().toUpperCase().split(/\s+/); e.target.value = '';
-  if (!a) return;
-  if (a === 'HELP') return status('Commands: <TICKER> | CHART <T> | NEWS <T>');
-  const t = ['CHART', 'NEWS', 'QUOTE'].includes(a) ? b : a;
-  if (t) go(t);
+const TABS = ['Home', 'Markets', 'Equities', 'Fixed Income', 'FX', 'Commodities', 'Macro', 'News', 'Portfolio'];
+$('tabs').innerHTML = TABS.map((t, i) => `<button class="${i ? '' : 'on'}">${t}</button>`).join('');
+$('tabs').addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  [...$('tabs').children].forEach((b) => b.classList.toggle('on', b === e.target));
 });
-$('watchlist').addEventListener('click', (e) => { const r = e.target.closest('.row'); if (r?.dataset.s) go(r.dataset.s); });
-setInterval(() => ($('clock').textContent = new Date().toLocaleTimeString()), 1000);
-loadWatch(); go(current); setInterval(loadWatch, 60000);
+
+const dash = (n) => Array.from({ length: n }, () => '<td>--</td>').join('');
+const table = (cols, rows, names) => `<table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
+  Array.from({ length: rows }, (_, i) => `<tr><td>${names?.[i] ?? '--'}</td>${dash(cols.length - 1)}</tr>`).join('')}</tbody></table>`;
+const news = (n) => Array.from({ length: n }, () => '<div class="news-line"><i>--:--</i><div class="skel"></div></div>').join('');
+const chart = (msg) => `<div class="chart-wrap"><div class="chart-area"></div><div class="empty">${msg}</div></div>`;
+
+// [num, title, hint, col start, col span, row start, row span, body]
+const PANELS = [
+  ['1', 'MONITOR  Watchlist', 'MON', 1, 3, 1, 3, table(['Ticker', 'Last', 'Chg', '%Chg', 'Vol'], 14, ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'JPM'])],
+  ['2', 'GP  Price Chart', 'GP', 4, 6, 1, 3, chart('NO DATA')],
+  ['3', 'TOP  Top News', 'TOP', 10, 3, 1, 2, news(10)],
+  ['4', 'WEI  World Equity Indices', 'WEI', 1, 3, 4, 3, table(['Index', 'Last', 'Chg', '%Chg'], 12, ['SPX', 'INDU', 'CCMP', 'RTY', 'UKX', 'DAX', 'CAC', 'NKY', 'HSI', 'SHCOMP', 'SENSEX', 'NIFTY'])],
+  ['5', 'FXC  Currencies', 'FXC', 4, 3, 4, 3, table(['Pair', 'Bid', 'Ask', '%Chg'], 6, ['EURUSD', 'USDJPY', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD'])],
+  ['6', 'GC  Yield Curve', 'GC', 7, 3, 4, 3, chart('NO DATA')],
+  ['7', 'ECO  Economic Calendar', 'ECO', 10, 3, 3, 2, table(['Event', 'Actual', 'Survey', 'Prior'], 8)],
+  ['8', 'CMDTY  Commodities', 'CMDTY', 10, 3, 5, 2, table(['Name', 'Last', 'Chg', '%Chg', 'YTD%'], 5, ['CL1 Crude', 'CO1 Brent', 'NG1 Natgas', 'GC1 Gold', 'HG1 Copper'])],
+];
+$('grid').innerHTML = PANELS.map(([n, title, hint, c, cs, r, rs, body]) =>
+  `<section class="panel" style="grid-column:${c}/span ${cs};grid-row:${r}/span ${rs}"><div class="ph"><b>${n}</b><h2>${title}</h2><span>${hint}</span></div><div class="pb">${body}</div></section>`).join('');
+
+const tick = () => { const t = new Date().toLocaleTimeString([], { hour12: false }); $('clock').textContent = t; $('sbclock').textContent = t; };
+tick(); setInterval(tick, 1000);
+$('go').addEventListener('click', () => { $('cmd').value = ''; $('cmd').focus(); });
+$('cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });

@@ -7,17 +7,24 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <span class="logo">OPENTERM</span>
-  <input id="cmd" autofocus autocomplete="off" spellcheck="false" placeholder="Command: AAPL  |  CHART TSLA  |  NEWS NVDA  |  HELP">
+<div id="tape" aria-label="Market ticker tape"><div id="tape-track"></div></div>
+
+<nav id="fkeys"></nav>
+
+<div id="cmdbar">
+  <span class="mkt-tag">US</span>
+  <input id="cmd" autofocus autocomplete="off" spellcheck="false" placeholder="Enter command, security or function, then press GO">
+  <button id="go" type="button">GO</button>
   <span id="clock"></span>
-</header>
-<main>
-  <section class="panel" id="watch"><h2>WATCHLIST</h2><div id="watchlist"></div></section>
-  <section class="panel" id="chartp"><h2 id="charttitle">CHART</h2><canvas id="chart"></canvas></section>
-  <section class="panel" id="newsp"><h2>NEWS</h2><div id="news"></div></section>
-</main>
-<footer id="status">Data: free sources, delayed. Not investment advice.</footer>
+</div>
+
+<nav id="tabs"></nav>
+
+<main id="grid"></main>
+
+<footer id="statusbar">
+  <span>OPENTERM</span><span>No data connected</span><span id="sbclock"></span>
+</footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>
