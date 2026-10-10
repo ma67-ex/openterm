@@ -8,3 +8,5 @@ import './macro.js';
 import './research.js';
 import './company.js';
 import './holders.js';
+import './options.js';
+import './earnings.js';

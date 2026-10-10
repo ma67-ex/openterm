@@ -15,3 +15,17 @@
 .eq-map canvas{cursor:pointer}
 .eq-tip{position:absolute;pointer-events:none;background:#111;border:1px solid var(--amber-dim);padding:3px 6px;white-space:nowrap;display:none;z-index:2}
 .eq-day td{color:var(--amber);font-weight:700;border-bottom:1px solid var(--line);padding-top:6px}
+.eq-pre{display:flex;gap:4px;padding:3px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.eq-pre button,.eq-io button{background:#1b1b1b;border:1px solid var(--line);color:var(--txt);padding:1px 8px}
+.eq-chip{display:inline-flex}
+.eq-chip button[data-del]{padding:1px 4px;color:var(--mute)}
+.eq-chip.on button{background:var(--amber);color:#000;border-color:var(--amber)}
+.eq-pname{background:#0c0c0c;border:1px solid var(--line);color:var(--txt);font:inherit;padding:1px 3px;width:110px}
+.eq-io{padding:3px;border-bottom:1px solid var(--line)}
+.eq-io textarea{width:100%;box-sizing:border-box;background:#0c0c0c;border:1px solid var(--line);color:var(--txt);font:inherit}
+.eq-iomsg{color:var(--mute);margin-left:6px}
+.eq-run{cursor:pointer}
+.eq-run:hover td{background:#161616}
+.eq-btns{display:flex;gap:2px;padding:3px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.eq-btns button{background:#1b1b1b;border:1px solid var(--line);color:var(--txt);padding:1px 8px}
+.eq-btns button.on{background:var(--amber);color:#000;border-color:var(--amber)}
