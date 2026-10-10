@@ -1,0 +1,10 @@
+name: sec-test
+on: workflow_dispatch
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in https://www.sec.gov/files/company_tickers.json https://data.sec.gov/submissions/CIK0000320193.json https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json; do
+            curl -s -o /dev/null -w "%{http_code} $u\n" -H "User-Agent: OpenTerm/0.1 (open-source terminal)" $u
+          done
