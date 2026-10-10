@@ -23,6 +23,8 @@ for (const [key, cfg] of Object.entries(GROUPS)) {
   if (!force && when === 'weekday' && !weekday) { console.log(`${key}: market closed, skip`); continue; }
   // hours-gated groups run in the first 20 minutes of their hours, so a late or skipped cron run still gets a second try
   if (!force && hours && !(hours.includes(now.getUTCHours()) && now.getUTCMinutes() < 20)) continue;
+  // slot [n, of]: run only in the n-th 10-minute slot of every `of` slots, so shards spread across the hour
+  if (!force && cfg.slot && Math.floor(now.getUTCMinutes() / 10) % cfg.slot[1] !== cfg.slot[0]) continue;
   if (!force && cfg.everyMin && now.getUTCMinutes() % cfg.everyMin >= 10) continue;
   if (overBudget && !['indices', 'watchlist'].includes(key)) continue;
   let data;

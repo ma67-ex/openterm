@@ -1,112 +1,45 @@
-// Home page layout and the shared snapshot refresh loop. Feature commands live in mods/.
-import { $, esc, fmt, cls, sgn, vol, hhmm, status, runCommand, snapKeys, useSnap, dispatchSnap, commands } from './core.js';
+// Shell: tabs, function keys, command bar and the shared snapshot refresh loop. Panels live in pages.js and mods/shell.js.
+import { $, esc, fmt, cls, sgn, status, runCommand, snapKeys, dispatchSnap, commands } from './core.js';
+import './mods/shell.js';
 import './mods/index.js';
+import { PAGES, showPage, currentPage, pageFromHash, slug } from './pages.js';
 
-const FKEYS = ['HELP', 'PANEL', 'MONITOR', 'NEWS', 'EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY', 'MTGE', 'INDX', 'MENU'];
-$('fkeys').innerHTML = FKEYS.map((k, i) => `<button class="${i % 2 ? 'alt' : ''}">F${i + 1} ${k}</button>`).join('');
-
-
-const TABS = ['Home', 'Markets', 'Equities', 'Fixed Income', 'FX', 'Commodities', 'Macro', 'News', 'Portfolio'];
-$('tabs').innerHTML = TABS.map((t, i) => `<button class="${i ? '' : 'on'}">${t}</button>`).join('');
-$('tabs').addEventListener('click', (e) => {
-  if (e.target.tagName !== 'BUTTON') return;
-  [...$('tabs').children].forEach((b) => b.classList.toggle('on', b === e.target));
-});
-
-const dash = (n) => Array.from({ length: n }, () => '<td>--</td>').join('');
-const table = (cols, rows, names) => `<table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
-  Array.from({ length: rows }, (_, i) => `<tr><td>${names?.[i] ?? '--'}</td>${dash(cols.length - 1)}</tr>`).join('')}</tbody></table>`;
-const news = (n) => Array.from({ length: n }, () => '<div class="news-line"><i>--:--</i><div class="skel"></div></div>').join('');
-const chart = (msg) => `<div class="chart-wrap"><div class="chart-area"></div><div class="empty">${msg}</div></div>`;
-
-// [num, title, hint, col start, col span, row start, row span, body]
-const PANELS = [
-  ['1', 'MONITOR  Watchlist', 'MON', 1, 3, 1, 3, table(['Ticker', 'Last', 'Chg', '%Chg', 'Vol'], 14, ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'JPM'])],
-  ['2', 'GP  Price Chart', 'GP', 4, 6, 1, 3, chart('NO DATA')],
-  ['3', 'TOP  Top News', 'TOP', 10, 3, 1, 2, news(10)],
-  ['4', 'WEI  World Equity Indices', 'WEI', 1, 3, 4, 3, table(['Index', 'Last', 'Chg', '%Chg'], 12, ['SPX', 'INDU', 'CCMP', 'RTY', 'UKX', 'DAX', 'CAC', 'NKY', 'HSI', 'SHCOMP', 'SENSEX', 'NIFTY'])],
-  ['5', 'FXC  Currencies', 'FXC', 4, 3, 4, 3, table(['Pair', 'Bid', 'Ask', '%Chg'], 6, ['EURUSD', 'USDJPY', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD'])],
-  ['6', 'GC  Yield Curve', 'GC', 7, 3, 4, 3, chart('NO DATA')],
-  ['7', 'ECO  Economic Calendar', 'ECO', 10, 3, 3, 2, table(['Date', 'Release'], 8)],
-  ['8', 'CMDTY  Commodities', 'CMDTY', 10, 3, 5, 2, table(['Name', 'Last', 'Chg', '%Chg', 'YTD%'], 5, ['CL1 Crude', 'CO1 Brent', 'NG1 Natgas', 'GC1 Gold', 'HG1 Copper'])],
+const go = (name, hint) => () => { showPage(name); if (hint) status(hint); };
+const cycle = () => showPage(PAGES[(PAGES.findIndex((p) => p.name === currentPage()) + 1) % PAGES.length].name);
+const FKEYS = [
+  ['HELP', () => runCommand('HELP')], ['PANEL', cycle], ['MONITOR', go('Home')], ['NEWS', go('News')],
+  ['EQUITY', go('Equities')], ['CORP', go('Equities', 'CORP: type TICKER FA for financials, TICKER DES for description')],
+  ['GOVT', go('Fixed Income')], ['CMDTY', go('Commodities')], ['CURNCY', go('FX')], ['MTGE', go('Macro')],
+  ['INDX', go('Markets')], ['MENU', go('Portfolio')],
 ];
-$('grid').innerHTML = PANELS.map(([n, title, hint, c, cs, r, rs, body]) =>
-  `<section class="panel" style="grid-column:${c}/span ${cs};grid-row:${r}/span ${rs}"><div class="ph"><b>${n}</b><h2>${title}</h2><span>${hint}</span></div><div class="pb">${body}</div></section>`).join('');
+$('fkeys').innerHTML = FKEYS.map(([k], i) => `<button data-f="${i}" class="${i % 2 ? 'alt' : ''}">F${i + 1} ${k}</button>`).join('');
+$('fkeys').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) FKEYS[b.dataset.f][1](); });
+
+$('tabs').innerHTML = PAGES.map((p) => `<button data-p="${slug(p.name)}">${esc(p.name)}</button>`).join('');
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showPage(b.dataset.p); });
+addEventListener('hashchange', () => showPage(pageFromHash().name));
+showPage(pageFromHash().name);
 
 const tick = () => { const t = new Date().toLocaleTimeString([], { hour12: false }); $('clock').textContent = t; $('sbclock').textContent = t; };
 tick(); setInterval(tick, 1000);
-$('cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
 
-// ---- live data: one /api/snap call fills every panel ----
-['watchlist', 'indices', 'fx', 'cmdty', 'crypto', 'curve', 'calendar', 'news'].forEach((k) => snapKeys.add(k));
+// ---- live data: one /api/snap call; widgets get the data through dispatchSnap ----
+['indices', 'fx', 'cmdty', 'crypto'].forEach((k) => snapKeys.add(k));
 const dec = (r) => (Math.abs(r.p) < 20 ? 4 : 2);
-
-const COLS = {
-  watchlist: (r) => [r.s, fmt(r.p), sgn(r.c), sgn(r.pc) + '%', vol(r.v)],
-  indices: (r) => [r.n, fmt(r.p), sgn(r.c), sgn(r.pc) + '%'],
-  fx: (r) => [r.n, fmt(r.p, 4), '--', sgn(r.pc) + '%'],
-  cmdty: (r) => [r.n, fmt(r.p), sgn(r.c), sgn(r.pc) + '%', '--'],
-};
-const PANEL_OF = { watchlist: 1, indices: 4, fx: 5, cmdty: 8 };
-
-function fillPanel(key, snap) {
-  const body = document.querySelector(`.panel:nth-child(${PANEL_OF[key]}) tbody`);
-  if (!body || !snap) return;
-  body.innerHTML = snap.rows.map((r) => {
-    const cells = COLS[key](r);
-    return '<tr>' + cells.map((c, i) => `<td class="${i >= 2 && i <= 3 ? cls(r.c) : i === 1 ? 'px' : ''}">${c}</td>`).join('') + '</tr>';
-  }).join('');
-}
+let lastData = null;
 
 function fillTape(data) {
   const rows = ['indices', 'fx', 'cmdty', 'crypto'].flatMap((k) => data[k]?.rows ?? []);
   if (!rows.length) return;
-  const t = rows.map((r) => `<span>${r.n.split(' ')[0]} ${fmt(r.p, dec(r))}<i class="${cls(r.c)}">${sgn(r.pc)}%</i></span>`).join('');
+  const t = rows.map((r) => `<span>${esc(r.n.split(' ')[0])} ${fmt(r.p, dec(r))}<i class="${cls(r.c)}">${sgn(r.pc)}%</i></span>`).join('');
   $('tape-track').innerHTML = t + t;
-}
-
-// ---- yield curve (panel 6) and calendar (panel 7) ----
-function drawCurve(snap) {
-  const box = document.querySelector('.panel:nth-child(6) .pb');
-  if (!snap || !box) return;
-  box.innerHTML = '<canvas style="width:100%;height:100%"></canvas>';
-  const c = box.querySelector('canvas'), r = c.getBoundingClientRect(), k = devicePixelRatio || 1;
-  c.width = r.width * k; c.height = r.height * k;
-  const g = c.getContext('2d'); g.scale(k, k);
-  const rows = snap.rows, W = r.width, H = r.height, padL = 30, padB = 16, padT = 10;
-  const ys = rows.flatMap((p) => [p.y, p.prev]).filter((v) => v != null);
-  const lo = Math.min(...ys) - 0.1, hi = Math.max(...ys) + 0.1;
-  const X = (i) => padL + (i / (rows.length - 1)) * (W - padL - 8), Y = (v) => H - padB - ((v - lo) / (hi - lo)) * (H - padB - padT);
-  g.font = '10px monospace'; g.fillStyle = '#777'; g.strokeStyle = '#222'; g.lineWidth = 1;
-  for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) * i) / 3, y = Y(v); g.beginPath(); g.moveTo(padL, y); g.lineTo(W - 8, y); g.stroke(); g.fillText(v.toFixed(2), 0, y + 3); }
-  rows.forEach((p, i) => g.fillText(p.m, X(i) - 6, H - 3));
-  const line = (key, color) => { g.strokeStyle = color; g.lineWidth = 1.5; g.beginPath(); rows.forEach((p, i) => (i ? g.lineTo(X(i), Y(p[key])) : g.moveTo(X(i), Y(p[key])))); g.stroke(); };
-  if (rows.every((p) => p.prev != null)) line('prev', '#555');
-  line('y', '#ffb000');
-  document.querySelector('.panel:nth-child(6) h2').textContent = `GC  Yield Curve  ${rows[0].date ?? ''}`;
-}
-
-function fillCalendar(snap) {
-  const body = document.querySelector('.panel:nth-child(7) tbody');
-  if (!body || !snap) return;
-  body.innerHTML = snap.rows.map((r) => `<tr><td>${r.d.slice(5)}</td><td style="text-align:left;color:var(--txt);max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis" title="${r.e}">${r.e}</td></tr>`).join('');
-}
-
-function fillNews(snap) {
-  const box = document.querySelector('.panel:nth-child(3) .pb');
-  if (!box || !snap?.rows?.length) return;
-  box.innerHTML = snap.rows.filter((r) => /^https?:\/\//i.test(r.u)).map((r) =>
-    `<div class="news-line"><i>${hhmm(r.ts)}</i><b>${esc(r.s)}</b><a href="${esc(r.u)}" target="_blank" rel="noopener noreferrer">${esc(r.t)}</a></div>`).join('');
 }
 
 async function refresh() {
   try {
     const data = await (await fetch(`/api/snap?keys=${[...snapKeys].join(',')}`)).json();
-    Object.keys(PANEL_OF).forEach((k) => fillPanel(k, data[k]));
+    lastData = data;
     fillTape(data);
-    drawCurve(data.curve);
-    fillCalendar(data.calendar);
-    fillNews(data.news);
     dispatchSnap(data);
     const times = ['watchlist', 'indices', 'fx', 'cmdty'].map((k) => data[k]?.asOf).filter(Boolean).sort();
     const oldest = times[0];
@@ -115,10 +48,94 @@ async function refresh() {
   } catch { status('Data unavailable', true); }
 }
 refresh(); setInterval(refresh, 60000);
+// Widgets that use useSnap get the latest data again whenever the page changes.
+document.addEventListener('pagechange', () => lastData && dispatchSnap(lastData));
 
-// ---- command bar ----
-registerHelp();
-function registerHelp() {
-  commands.set('HELP', { help: 'HELP  list commands', run: () => status([...commands.entries()].filter(([k]) => k !== 'HELP').map(([, v]) => v.help).join('  |  ')) });
+// ---- command bar: history, autocomplete (commands + symbol search) ----
+const cmd = $('cmd'), ac = $('ac');
+const hist = (() => { try { return JSON.parse(localStorage.getItem('ot-hist')) || []; } catch { return []; } })();
+let hi = -1, draft = '', items = [], sel = -1, ctl = null, timer = 0;
+
+function draw() {
+  ac.hidden = !items.length;
+  ac.innerHTML = items.map((it, i) => `<div class="ac-i${i === sel ? ' on' : ''}" data-i="${i}"><b>${esc(it.t)}</b><span>${esc(it.sub)}</span></div>`).join('');
 }
-$('go').addEventListener('click', () => { const v = $('cmd').value; $('cmd').value = ''; runCommand(v); });
+
+// Token being typed, how many whole tokens precede it, and the first of those.
+function token() {
+  const v = cmd.value, tok = /\S*$/.exec(v)[0], head = v.slice(0, v.length - tok.length).trim();
+  return { tok: tok.toUpperCase(), start: v.length - tok.length, idx: head ? head.split(/\s+/).length : 0, first: head.split(/\s+/)[0].toUpperCase() };
+}
+
+function suggest() {
+  clearTimeout(timer); ctl?.abort(); ctl = null; sel = -1;
+  const { tok, idx, first } = token(), firstIsCmd = commands.has(first);
+  items = [];
+  if (idx === 0 || (idx === 1 && !firstIsCmd)) {
+    items = [...commands].filter(([n]) => n.startsWith(tok) && n !== tok && (tok || idx === 1)).slice(0, 8)
+      .map(([n, d]) => ({ t: n, sub: d.help ?? '', cmd: true }));
+  }
+  draw();
+  if (!/^[A-Z0-9.&-]+$/.test(tok) || !(idx === 0 || (idx === 1 && firstIsCmd))) return;
+  timer = setTimeout(async () => {
+    const mine = ctl = new AbortController();
+    try {
+      const r = await fetch(`/api/data?fn=search&q=${encodeURIComponent(tok)}`, { signal: mine.signal });
+      if (!r.ok) return;
+      const rows = (await r.json()).rows ?? [];
+      if (mine !== ctl || token().tok !== tok) return;
+      items = [...items.filter((i) => i.cmd), ...rows.slice(0, 8).map((x) => ({ t: x.s, sub: [x.n, x.x].filter(Boolean).join('  ') }))];
+      sel = -1; draw();
+    } catch { /* aborted or offline */ }
+  }, 250);
+}
+
+function pick(i) {
+  const it = items[i];
+  if (!it) return;
+  cmd.value = cmd.value.slice(0, token().start) + it.t + ' ';
+  cmd.focus(); suggest();
+}
+
+function submit() {
+  const v = cmd.value.trim();
+  clearTimeout(timer); ctl?.abort();
+  cmd.value = ''; items = []; draw(); hi = -1;
+  if (!v) return;
+  if (hist.at(-1) !== v) { hist.push(v); hist.splice(0, hist.length - 50); try { localStorage.setItem('ot-hist', JSON.stringify(hist)); } catch { /* private mode */ } }
+  runCommand(v);
+}
+
+// d = -1 older, +1 newer
+function historyStep(d) {
+  if (!hist.length) return;
+  if (hi < 0) { if (d > 0) return; draft = cmd.value; hi = hist.length; }
+  hi += d;
+  if (hi >= hist.length) { hi = -1; cmd.value = draft; return; }
+  hi = Math.max(0, hi);
+  cmd.value = hist[hi];
+}
+
+cmd.addEventListener('input', () => { hi = -1; suggest(); });
+cmd.addEventListener('blur', () => { items = []; draw(); });
+cmd.addEventListener('keydown', (e) => {
+  const open = !ac.hidden;
+  if (e.key === 'Enter') { e.preventDefault(); if (open && sel >= 0) pick(sel); else submit(); }
+  else if (e.key === 'Tab' && open) { e.preventDefault(); pick(sel >= 0 ? sel : 0); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const d = e.key === 'ArrowDown' ? 1 : -1;
+    if (open) { sel = sel < 0 ? (d > 0 ? 0 : items.length - 1) : (sel + d + items.length) % items.length; draw(); }
+    else historyStep(d);
+  } else if (e.key === 'Escape') cmd.blur();
+});
+ac.addEventListener('mousedown', (e) => { e.preventDefault(); const r = e.target.closest('.ac-i'); if (r) pick(+r.dataset.i); });
+$('go').addEventListener('click', submit);
+
+// ---- keyboard: F1-F12 act as the bar buttons, / focuses the command bar ----
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const m = /^F(\d+)$/.exec(e.key);
+  if (m && FKEYS[m[1] - 1]) { e.preventDefault(); FKEYS[m[1] - 1][1](); return; }
+  if (e.key === '/' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) { e.preventDefault(); cmd.focus(); cmd.select(); }
+});

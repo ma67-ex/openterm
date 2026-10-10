@@ -1,0 +1,13 @@
+/* shell: economic calendar cells and HELP overlay */
+.eco-e{text-align:left;color:var(--txt);max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
+
+#ov{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);display:grid;place-items:center;cursor:pointer}
+.ov-box{background:#070707;border:1px solid var(--amber-dim);width:min(720px,94vw);max-height:84vh;display:flex;flex-direction:column;cursor:default}
+.ov-h{display:flex;justify-content:space-between;background:var(--bar);padding:4px 10px;color:var(--amber)}
+.ov-h span{color:var(--mute);font-size:11px}
+.ov-b{overflow:auto;padding:6px 10px;flex:1;min-height:0}
+.ov-g{color:#000;background:var(--amber);display:inline-block;padding:0 6px;margin:8px 0 3px;font-weight:700}
+.ov-r{display:flex;gap:14px;padding:1px 0}
+.ov-r b{color:var(--amber);min-width:84px;flex:none}
+.ov-r span{color:var(--txt)}
+.ov-f{border-top:1px solid var(--line);padding:4px 10px;color:var(--mute);font-size:11px}

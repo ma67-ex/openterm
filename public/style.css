@@ -25,20 +25,21 @@ button{font:inherit;cursor:pointer}
 /* command bar */
 #cmdbar{display:flex;align-items:center;gap:8px;padding:5px 8px;background:#0e0e0e;border-bottom:1px solid var(--line);flex:none}
 .mkt-tag{background:var(--amber);color:#000;font-weight:700;padding:2px 6px}
-#cmd{flex:1;background:#000;border:1px solid var(--amber-dim);color:var(--amber);padding:5px 8px;font:inherit;font-size:13px;text-transform:uppercase;outline:none}
+#cmdwrap{flex:1;position:relative;display:flex;min-width:0}
+#cmd{flex:1;min-width:0;background:#000;border:1px solid var(--amber-dim);color:var(--amber);padding:5px 8px;font:inherit;font-size:13px;text-transform:uppercase;outline:none}
 #cmd:focus{border-color:var(--amber)}
 #cmd::placeholder{color:#5a4320;text-transform:none}
 #go{background:#1f7a3a;color:#fff;border:0;padding:5px 14px;font-weight:700}
 #clock{color:var(--mute);min-width:70px;text-align:right}
 
 /* page tabs */
-#tabs{display:flex;background:var(--bar);flex:none}
-#tabs button{background:transparent;border:0;border-right:1px solid #000;color:var(--mute);padding:4px 14px}
+#tabs{display:flex;background:var(--bar);flex:none;overflow-x:auto}
+#tabs button{flex:none;white-space:nowrap;background:transparent;border:0;border-right:1px solid #000;color:var(--mute);padding:4px 14px}
 #tabs button.on{background:#000;color:var(--amber);border-top:2px solid var(--amber)}
 
 /* grid of panels */
 #grid{flex:1;min-height:0;display:grid;gap:2px;background:var(--line);padding:2px;
-  grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(6,1fr)}
+  grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))}
 .panel{background:var(--panel);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
 .ph{display:flex;align-items:center;gap:8px;background:var(--bar);padding:2px 6px;flex:none;border-bottom:1px solid #000}
 .ph b{background:var(--amber);color:#000;padding:0 5px;font-size:11px}
@@ -71,7 +72,9 @@ tr:hover td{background:#0f0f0f}
 #statusbar span:first-child{color:var(--amber);font-weight:700}
 #statusbar #sbclock{margin-left:auto}
 
-@media(max-width:1000px){body{overflow:auto}#grid{display:block}.panel{height:260px;margin-bottom:2px}}
+@media(max-width:1000px){#grid{display:block;overflow:auto}.panel{height:300px;margin-bottom:2px}
+  #fkeys{overflow-x:auto}#fkeys button{flex:none}}
+@media(max-width:600px){#clock{display:none}}
 
 td.up,#tape i.up{color:var(--up)}td.dn,#tape i.dn,#sbdata.dn{color:var(--dn)}td.px{color:var(--txt)}
 td{white-space:nowrap}
@@ -84,3 +87,18 @@ table.fa tr.fa-sec td{color:var(--amber);font-weight:700;letter-spacing:.5px;bor
 table.fa td.fa-neg{color:var(--dn)}
 table.fa a{color:var(--blue)}
 .fa-src{color:var(--mute);font-size:10px;padding:4px 6px}
+
+/* command autocomplete */
+#ac{position:absolute;top:100%;left:0;right:0;z-index:40;background:#0a0a0a;border:1px solid var(--amber-dim);max-height:260px;overflow:auto}
+.ac-i{display:flex;gap:12px;padding:3px 8px;cursor:pointer}
+.ac-i b{color:var(--amber);min-width:90px;flex:none}
+.ac-i span{color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-i.on,.ac-i:hover{background:#1b1b1b}
+
+/* slim dark scrollbars */
+*{scrollbar-width:thin;scrollbar-color:#3a3a3a #050505}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#050505}
+::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--amber-dim)}
+::-webkit-scrollbar-corner{background:#050505}

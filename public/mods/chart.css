@@ -1,0 +1,23 @@
+.chart-root{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.chart-bar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px 4px;background:#0a0a0a;border-bottom:1px solid var(--line);flex:none}
+.chart-btn{background:#1b1b1b;color:var(--mute);border:0;padding:2px 7px;font:inherit;font-size:11px;cursor:pointer}
+.chart-btn:hover{color:var(--amber)}
+.chart-btn.on{background:var(--amber);color:#000;font-weight:700}
+.chart-sep{width:8px}
+.chart-in{background:#000;border:1px solid var(--amber-dim);color:var(--amber);padding:2px 6px;font:inherit;font-size:11px;text-transform:uppercase;outline:none;min-width:160px}
+.chart-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;padding:3px 8px;flex:none;min-height:8px}
+.chart-sym{color:var(--amber);font-weight:700;font-size:14px}
+.chart-px{color:#fff;font-size:15px}
+.chart-mu{color:var(--mute)}
+.chart-up{color:var(--up)}
+.chart-dn{color:var(--dn)}
+.chart-box{position:relative;flex:1;min-height:0;overflow:hidden}
+.chart-box canvas{display:block}
+.chart-leg i{display:inline-block;width:10px;height:3px;margin-right:5px;vertical-align:middle}
+.chart-scroll{flex:1;min-height:0;overflow:auto}
+.chart-tbl td{color:var(--txt)}
+.chart-tbl td:first-child{color:var(--blue)}
+.chart-tbl td.chart-up{color:var(--up)}
+.chart-tbl td.chart-dn{color:var(--dn)}
+.chart-tbl td.chart-cell{text-align:center;padding:6px}
+.chart-note{color:var(--mute);padding:8px;font-size:11px}
