@@ -1,0 +1,8 @@
+{
+  "name": "openterm",
+  "version": "0.1.0",
+  "description": "Open-source Bloomberg-style market terminal built only on free data sources.",
+  "type": "module",
+  "scripts": { "start": "node server.js" },
+  "license": "MIT"
+}
