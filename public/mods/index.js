@@ -10,3 +10,5 @@ import './company.js';
 import './holders.js';
 import './options.js';
 import './earnings.js';
+import './congress.js';
+import './politicians.js';
