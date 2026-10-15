@@ -1,5 +1,5 @@
 // Macro, rates and fixed income: FRED, WECO, CBR, CRED, YCRV, YAS.
-import { esc, fmt, msg, getJSON, canvas, registerCommand, registerWidget, openWidget, loadCSS } from '../core.js';
+import { esc, fmt, msg, getJSON, canvas, registerCommand, registerWidget, openWidget, runCommand, loadCSS } from '../core.js';
 loadCSS(new URL('./macro.css', import.meta.url));
 
 const LOADING = msg('LOADING...');
@@ -274,3 +274,48 @@ function renderYas(box) {
 }
 registerWidget('yas', { title: 'YAS  Bond Calculator', hint: 'YAS', render: renderYas });
 registerCommand('YAS', { help: 'YAS  bond yield, duration, convexity calculator', run: () => openWidget('yas') });
+
+// ---------- ECB ----------
+const ECB_CCY = ['USD', 'GBP', 'JPY', 'CHF', 'CNY', 'AUD', 'CAD'];
+const ecbKey = (ccy) => `D.${ccy}.EUR.SP00.A`;
+const ecbFetch = async (ccy, params) => {
+  const r = await fetch(`/api/ecb?flowRef=EXR&key=${encodeURIComponent(ecbKey(ccy))}${params}`);
+  const d = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(d?.detail || `HTTP ${r.status}`);
+  return d;
+};
+const ECB_RANGES = { '3M': 0.25, '1Y': 1, '5Y': 5, MAX: 0 };
+
+async function renderEcb(box, args) {
+  const ccy = (args[0] || 'USD').toUpperCase();
+  if (!ECB_CCY.includes(ccy)) { box.innerHTML = msg(`ECB <CCY>. OPTIONS: ${ECB_CCY.join(' ')}`); return; }
+  const st = { range: '1Y', rows: null };
+  box.innerHTML = `<div class="macro-wrap"><div class="macro-head" data-h></div><div class="macro-btns" data-b></div><div class="macro-cv" data-c>${LOADING}</div><div class="macro-out" data-s></div></div>`;
+  const head = box.querySelector('[data-h]'), btns = box.querySelector('[data-b]'), cv = box.querySelector('[data-c]'), strip = box.querySelector('[data-s]');
+  const draw = () => {
+    const cut = ECB_RANGES[st.range] ? isoYearsAgo(ECB_RANGES[st.range]) : '';
+    const rows = st.rows.filter((r) => r[0] >= cut);
+    const last = rows.at(-1);
+    const hdr = (r) => { head.innerHTML = `<span class="macro-title">EUR${esc(ccy)}  ECB reference rate</span><span class="macro-last">${r ? esc(num(r[1], 4)) : '--'}</span><span class="macro-sub">${r ? esc(r[0]) : ''} | ECB daily reference, ~16:00 CET</span>`; };
+    hdr(last);
+    if (!rows.length) { cv.innerHTML = msg('NO DATA IN RANGE'); return; }
+    cv.innerHTML = '';
+    drawLine(cv, rows, (r) => hdr(r || last));
+  };
+  const bar = () => { btns.innerHTML = Object.keys(ECB_RANGES).map((k) => `<button data-r="${k}" class="${k === st.range ? 'on' : ''}">${k}</button>`).join(''); };
+  btns.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; st.range = b.dataset.r; bar(); draw(); };
+  bar();
+  try {
+    const points = await ecbFetch(ccy, '&lastN=2000');
+    st.rows = points.map((p) => [p.date, p.value]);
+    if (!st.rows.length) { cv.innerHTML = msg('NO DATA'); return; }
+    draw();
+  } catch (e) { head.innerHTML = ''; cv.innerHTML = msg(e.message.toUpperCase()); }
+
+  strip.innerHTML = ECB_CCY.map((c) => `<div data-c="${c}"><span>EUR${c}</span><b>...</b></div>`).join('');
+  const cells = Object.fromEntries([...strip.children].map((el) => [el.dataset.c, el]));
+  Promise.all(ECB_CCY.map((c) => ecbFetch(c, '&latest=1').then((d) => { cells[c].querySelector('b').textContent = d ? num(d.value, 4) : '--'; }).catch(() => { cells[c].querySelector('b').textContent = '--'; })));
+  strip.onclick = (e) => { const c = e.target.closest('[data-c]')?.dataset.c; if (c) runCommand(`ECB ${c}`); };
+}
+registerWidget('ecb', { title: (a) => `ECB  EUR${(a[0] || 'USD').toUpperCase()} reference rate`, hint: 'ECB USD', render: renderEcb });
+registerCommand('ECB', { help: `ECB <CCY>  ECB daily EUR reference rate (${ECB_CCY.join(' ')})`, run: (a) => openWidget('ecb', a.slice(0, 1)) });

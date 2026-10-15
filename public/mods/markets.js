@@ -60,10 +60,21 @@ useSnap(KEYS, (d) => {
 const cmd = (name, id, help) => registerCommand(name, { help, run: () => openWidget(id) });
 
 // ---- CRYPTO ----
+let cryptoGlobal = null, cryptoGlobalLoading = false;
+function loadCryptoGlobal() {
+  if (cryptoGlobal || cryptoGlobalLoading) return;
+  cryptoGlobalLoading = true;
+  fetch('/api/crypto?view=global').then((r) => r.json()).then((d) => {
+    cryptoGlobal = d;
+    for (const e of live) { if (e.box.isConnected) e.paint(); else live.delete(e); }
+  }).catch(() => {}).finally(() => { cryptoGlobalLoading = false; });
+}
 widget('crypto', 'CRYPTO  Top 30 by Market Cap', 'CRYPTO', (st) => {
   const rows = rowsOf('crypto2').map((r, i) => ({ ...r, i: i + 1 }));
   if (!rows.length) return '';
+  loadCryptoGlobal();
   const total = rows.reduce((a, r) => a + (r.mc || 0), 0);
+  const dom = cryptoGlobal ? ` <span class="mk-dom">TOTAL MCAP $${esc(money(cryptoGlobal.totalMarketCap))} · BTC.D ${cryptoGlobal.btcDominance.toFixed(1)}% · ETH.D ${cryptoGlobal.ethDominance.toFixed(1)}%</span>` : '';
   const cols = [
     { h: '#', v: (r) => r.i, f: (r) => `<td>${r.i}</td>` },
     { h: 'SYM', v: (r) => r.s, f: (r) => `<td>${esc(r.s)}</td>` },
@@ -76,7 +87,7 @@ widget('crypto', 'CRYPTO  Top 30 by Market Cap', 'CRYPTO', (st) => {
     { h: 'VOL 24H', v: (r) => r.v, f: (r) => `<td>${money(r.v)}</td>` },
     { h: 'CHART', v: (r) => r.c24h, f: (r) => `<td>${spark(r.spark)}</td>` },
   ];
-  return `<div class="mk"><div class="mk-hd"><b>TOP 30 MKT CAP $${esc(money(total))}</b>${asOf('crypto2')}</div>${table(cols, [[null, rows]], st)}</div>`;
+  return `<div class="mk"><div class="mk-hd"><b>TOP 30 MKT CAP $${esc(money(total))}</b>${dom}${asOf('crypto2')}</div>${table(cols, [[null, rows]], st)}</div>`;
 });
 cmd('CRYPTO', 'crypto', 'CRYPTO  top 30 crypto by market cap');
 cmd('CCRV', 'crypto', 'CCRV  alias of CRYPTO');

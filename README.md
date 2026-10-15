@@ -18,8 +18,8 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 - Headlines per symbol
 - US Congress, Trump and cabinet stock trades (`CONG`, `POL`)
 - Day-count convention math (`/api/daycount`)
-- Crypto markets via CoinGecko, no key (`/api/crypto`) — API only, no widget yet
-- Euro-area macro/FX series via ECB SDW, no key (`/api/ecb`) — API only, no widget yet
+- Total crypto market cap and BTC/ETH dominance in the `CRYPTO` widget header
+- `ECB` widget: euro-area reference rate chart + majors strip (USD, GBP, JPY, CHF, CNY, AUD, CAD)
 
 ## Roadmap (feature parity target, free sources only)
 
@@ -41,6 +41,6 @@ Free feeds are delayed or rate-limited. Real-time ticks, dealer-quoted fixed inc
 
 \* Stooq's `/q/d/l/` and `/q/l/` endpoints now serve a JS proof-of-work challenge page instead of CSV for plain server-side requests (verified directly, 2026-10-15) — no key, no CAPTCHA, just a bot check a headless fetch can't pass. Dead as a server-side source until that changes.
 
-\*\* CoinGecko and ECB are wired (`/api/crypto`, `/api/ecb`), API only — no terminal widget yet.
+\*\* CoinGecko is wired via `CRYPTO` (seeded top-30 + live global dominance) and `/api/crypto`. ECB is wired via the `ECB` widget and `/api/ecb` (majors reference rates only, not the full dataflow catalog).
 
 \*\*\* Binance's public REST API geo-blocks by request IP per their own terms (`"Service unavailable from a restricted location"`, verified directly, 2026-10-15) — unreliable from US-region hosts. Not wired in; CoinGecko covers crypto without that risk.
