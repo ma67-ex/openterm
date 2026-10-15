@@ -21,7 +21,7 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 
 | Bloomberg area | Free source |
 |---|---|
-| Equities, ETFs, indices, FX, futures | Yahoo chart endpoint, Stooq, Twelve Data |
+| Equities, ETFs, indices, FX, futures | Yahoo chart endpoint, Stooq\*, Twelve Data |
 | Filings and fundamentals | SEC EDGAR, Financial Modeling Prep free tier |
 | Macro and economics | FRED, World Bank, IMF, ECB |
 | Crypto | CoinGecko, Binance public API |
@@ -34,3 +34,5 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 ## Known limits
 
 Free feeds are delayed or rate-limited. Real-time ticks, dealer-quoted fixed income, licensed analyst consensus and chat are out of scope. Check each provider's terms before redistributing data publicly.
+
+\* Stooq's historical CSV endpoint (`/q/d/l/`) now requires an API key obtained via CAPTCHA on their site, and throttled requests return HTTP 200 with an error string in the body rather than a 429. Verify current behavior before wiring this in.
