@@ -8,11 +8,13 @@ import chart from './api/chart.js';
 import fundamentals from './api/fundamentals.js';
 import data from './api/data.js';
 import daycount from './api/daycount.js';
+import crypto from './api/crypto.js';
+import ecb from './api/ecb.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = process.env.PORT || 3200;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
-const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals, '/api/data': data, '/api/daycount': daycount };
+const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals, '/api/data': data, '/api/daycount': daycount, '/api/crypto': crypto, '/api/ecb': ecb };
 
 createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
