@@ -16,6 +16,7 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 - Watchlist with live (delayed) quotes
 - Price chart
 - Headlines per symbol
+- Live market news wire (`WIRE`), auto-refreshing every 45s
 - US Congress, Trump and cabinet stock trades (`CONG`, `POL`)
 - Day-count convention math (`/api/daycount`)
 - Total crypto market cap and BTC/ETH dominance in the `CRYPTO` widget header

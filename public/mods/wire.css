@@ -1,0 +1,8 @@
+.wire-list{display:flex;flex-direction:column;overflow-y:auto;height:100%}
+.wire-row{display:flex;gap:8px;padding:2px 8px;border-bottom:1px solid var(--line);align-items:baseline}
+.wire-t{font-style:normal;color:var(--mute);white-space:nowrap}
+.wire-src{color:var(--amber-dim);white-space:nowrap}
+.wire-h{color:var(--blue);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wire-h:hover{text-decoration:underline}
+.wire-row.wire-new{animation:wire-flash 2.5s ease-out}
+@keyframes wire-flash{0%{background:var(--amber);color:#000}100%{background:transparent}}
