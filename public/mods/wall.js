@@ -9,7 +9,7 @@ const split = (d, r, a, b) => ({ t: 'split', d, r, a, b });
 
 export const PRESETS = {
   DEFAULT: () => split('v', 0.26, leaf('mon'), split('h', 0.6, split('v', 0.64, leaf('gp', ['AAPL']), leaf('top')), split('v', 0.5, leaf('wei'), leaf('eco')))),
-  TRADER: () => split('v', 0.5, split('h', 0.55, leaf('gp', ['AAPL']), leaf('opt', ['AAPL'])), split('h', 0.5, split('v', 0.5, leaf('mon'), leaf('most')), leaf('nws', ['AAPL']))),
+  TRADER: () => split('v', 0.5, split('h', 0.55, leaf('gp', ['AAPL']), leaf('opt', ['AAPL'])), split('h', 0.5, split('v', 0.5, leaf('mon'), leaf('most')), leaf('wire'))),
   MACRO: () => split('h', 0.5, split('v', 0.5, leaf('fred', ['CPIAUCSL']), leaf('fred', ['UNRATE'])), split('v', 0.34, leaf('curve'), split('v', 0.5, leaf('cbrates'), leaf('eco')))),
   MARKETS: () => split('h', 0.5, split('v', 0.34, leaf('wei'), split('v', 0.5, leaf('sectors'), leaf('crypto'))), split('v', 0.34, leaf('futures'), split('v', 0.5, leaf('fxc'), leaf('vix')))),
 };

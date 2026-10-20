@@ -53,6 +53,17 @@ function drawBars(host, hist) {
   });
 }
 
+async function loadTranscripts(host, s) {
+  try {
+    const d = await cached(`/api/data?fn=transcript&s=${s}`);
+    if (!host.isConnected) return;
+    host.innerHTML = d.rows?.length
+      ? `<div class="ern-note">Earnings-call coverage (headlines, not full transcripts -- no free full-transcript source exists)</div><table class="ern-tbl"><tbody>${d.rows.map((r) =>
+        `<tr><td class="ern-l">${esc(r.ts.slice(0, 10))}</td><td><a href="${esc(r.u)}" target="_blank" rel="noopener noreferrer">${esc(r.t)}</a></td></tr>`).join('')}</tbody></table>`
+      : '';
+  } catch { if (host.isConnected) host.innerHTML = ''; }
+}
+
 function fcTable(title, list, label) {
   if (!list?.length) return '';
   return `<table class="ern-tbl"><caption>${esc(title)}</caption><thead><tr><th class="ern-l">${esc(label)}</th><th>Consensus</th><th>High</th><th>Low</th><th>Est.</th><th>Rev up</th><th>Rev down</th></tr></thead><tbody>${list.map((r) =>
@@ -77,9 +88,11 @@ registerWidget('ern', {
       const rv = d.revenue?.groups?.length ? `<table class="ern-tbl"><caption>Revenue by fiscal quarter</caption><thead><tr><th class="ern-l">Quarter</th>${d.revenue.years.map((y) => `<th>${esc(y)}</th>`).join('')}</tr></thead><tbody>${d.revenue.groups.map((g) =>
         `<tr><td class="ern-l">${esc(g.q)}</td>${d.revenue.years.map((_, i) => `<td>${esc(g.rev[i] ?? '--')}${g.eps[i] ? `<span class="ern-asof"> EPS ${esc(String(g.eps[i]).split(' ')[0])}</span>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '';
       const note = d.note ? `<div class="ern-note">${esc(d.note)}</div>` : '';
-      box.innerHTML = `<div class="ern-head">${head}</div>${note}${h.some((r) => r.eps != null) ? '<div class="ern-chart"></div><div class="ern-note">Bars: grey consensus, green beat, red miss.</div>' : ''}${hist}${fcTable('Consensus EPS forecast, quarterly', d.forecast?.quarterly, 'Fiscal quarter')}${fcTable('Consensus EPS forecast, annual', d.forecast?.yearly, 'Fiscal year')}${rv}<div class="ern-note">Source: ${d.source === 'edgar' ? 'SEC EDGAR' : 'Nasdaq (unofficial)'}. Consensus and revisions are delayed.</div>`;
+      box.innerHTML = `<div class="ern-head">${head}</div>${note}${h.some((r) => r.eps != null) ? '<div class="ern-chart"></div><div class="ern-note">Bars: grey consensus, green beat, red miss.</div>' : ''}${hist}${fcTable('Consensus EPS forecast, quarterly', d.forecast?.quarterly, 'Fiscal quarter')}${fcTable('Consensus EPS forecast, annual', d.forecast?.yearly, 'Fiscal year')}${rv}<div class="ern-note">Source: ${d.source === 'edgar' ? 'SEC EDGAR' : 'Nasdaq (unofficial)'}. Consensus and revisions are delayed.</div><div data-tr></div>`;
       const host = box.querySelector('.ern-chart');
       if (host) drawBars(host, h);
+      const trHost = box.querySelector('[data-tr]');
+      if (trHost) loadTranscripts(trHost, s);
       return null;
     });
   },

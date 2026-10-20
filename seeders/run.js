@@ -21,8 +21,17 @@ if (overBudget) console.log(`budget ${used}/${DAILY_BUDGET}: core groups only`);
 for (const [key, cfg] of Object.entries(GROUPS)) {
   const { when, hours } = cfg;
   if (!force && when === 'weekday' && !weekday) { console.log(`${key}: market closed, skip`); continue; }
-  // hours-gated groups run in the first 20 minutes of their hours, so a late or skipped cron run still gets a second try
-  if (!force && hours && !(hours.includes(now.getUTCHours()) && now.getUTCMinutes() < 20)) continue;
+  let old;
+  if (hours) {
+    // GitHub's scheduled cron drifts by hours, not the configured 10 min, so a single narrow per-hour
+    // window gets missed almost every day. Run once per hour-threshold reached instead of once per exact hour:
+    // any run from that hour onward (same UTC day) catches up, and multi-hour groups still get one attempt
+    // per threshold crossed (not collapsed into a single once-a-day run).
+    const due = hours.filter((h) => h <= now.getUTCHours());
+    [old] = await mget([`snap:${key}`]);
+    const doneThru = old?.asOf?.slice(0, 10) === day && old.asOf.slice(11, 13) >= String(Math.max(...due)).padStart(2, '0');
+    if (!force && (!due.length || doneThru)) continue;
+  }
   // slot [n, of]: run only in the n-th 10-minute slot of every `of` slots, so shards spread across the hour
   if (!force && cfg.slot && Math.floor(now.getUTCMinutes() / 10) % cfg.slot[1] !== cfg.slot[0]) continue;
   if (!force && cfg.everyMin && now.getUTCMinutes() % cfg.everyMin >= 10) continue;
@@ -31,7 +40,7 @@ for (const [key, cfg] of Object.entries(GROUPS)) {
   try { data = await (cfg.fetch ?? FETCH[cfg.source])(cfg); } catch (e) { console.log(`${key}: ${e.message}`); continue; }
   if (!data.length) { console.log(`${key}: no data`); continue; }
   const hash = createHash('sha1').update(JSON.stringify(data)).digest('hex');
-  const [old] = await mget([`snap:${key}`]);
+  if (old === undefined) [old] = await mget([`snap:${key}`]);
   if (old?.hash === hash) { console.log(`${key}: unchanged, no write`); continue; }
   await set(`snap:${key}`, { asOf: now.toISOString(), hash, rows: data }, SNAP_TTL);
   console.log(`${key}: wrote ${data.length} rows`);

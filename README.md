@@ -16,7 +16,8 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 - Watchlist with live (delayed) quotes
 - Price chart
 - Headlines per symbol
-- Live market news wire (`WIRE`), auto-refreshing every 45s
+- Live market news wire (`WIRE` or `WIRE <ticker>`), auto-refreshing every 45s, pauses on hover
+- Earnings-call coverage headlines on `ERN` (no free full-transcript source exists, so this is press writeups, not the call itself)
 - US Congress, Trump and cabinet stock trades (`CONG`, `POL`)
 - Day-count convention math (`/api/daycount`)
 - Total crypto market cap and BTC/ETH dominance in the `CRYPTO` widget header
