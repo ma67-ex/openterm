@@ -12,5 +12,5 @@ export default async function handler(req, res) {
     if (!data) return res.status(404).json({ error: 'no filings' });
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).json({ sym: s.toUpperCase(), view, cik: String(co.cik).padStart(10, '0'), ...data });
-  } catch (e) { res.status(502).json({ error: 'upstream failed', detail: String(e.message).slice(0, 80) + (process.env.EDGAR_UA ? ' [custom ua set]' : ' [default ua]') }); }
+  } catch (e) { console.error('fundamentals', s, e); res.setHeader('Cache-Control', 'no-store'); res.status(502).json({ error: 'upstream failed' }); }
 }

@@ -17,13 +17,21 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const api = { '/api/snap': snap, '/api/chart': chart, '/api/fundamentals': fundamentals, '/api/data': data, '/api/daycount': daycount, '/api/crypto': crypto, '/api/ecb': ecb };
 
 createServer(async (req, res) => {
-  const u = new URL(req.url, 'http://x');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'DENY');
+  let u;
+  try { u = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end('bad request'); }
   if (api[u.pathname]) { // Vercel-style res helpers
     req.query = Object.fromEntries(u.searchParams);
     res.status = (c) => { res.statusCode = c; return res; };
     res.json = (o) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); };
     res.send = (b) => { res.setHeader('Content-Type', 'application/json'); res.end(b); };
-    return api[u.pathname](req, res);
+    try { return await api[u.pathname](req, res); } catch (e) {
+      console.error(u.pathname, e);
+      if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); res.end('{"error":"internal"}'); } else res.end();
+      return;
+    }
   }
   try {
     const p = normalize(u.pathname === '/' ? '/index.html' : u.pathname).replace(/^(\.\.[/\\])+/, '');

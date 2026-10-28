@@ -9,8 +9,8 @@ export default async function handler(req, res) {
   if (!/^(markets|global)$/.test(view)) return res.status(400).json({ error: 'bad params', detail: 'view must be markets or global' });
 
   try {
+    const out = view === 'global' ? await globalStats() : await markets(perPage);
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
-    if (view === 'global') return res.status(200).json(await globalStats());
-    res.status(200).json(await markets(perPage));
-  } catch (e) { res.status(502).json({ error: 'upstream failed', detail: String(e.message).slice(0, 80) }); }
+    res.status(200).json(out);
+  } catch (e) { res.setHeader('Cache-Control', 'no-store'); console.error(e); res.status(502).json({ error: 'upstream failed' }); }
 }
