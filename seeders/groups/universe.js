@@ -36,6 +36,8 @@ const shard = (i) => ({
       const part = await Promise.allSettled(list.slice(k, k + 20).map(one));
       out.push(...part.filter((o) => o.status === 'fulfilled').map((o) => o.value));
     }
+    // a few delisted symbols are normal; a big gap is an outage, so keep the old snapshot (runner skips empty)
+    if (out.length < list.length * 0.95) { console.log(`universe shard ${i}: only ${out.length}/${list.length} quotes, keep old snapshot`); return []; }
     return out;
   },
 });
