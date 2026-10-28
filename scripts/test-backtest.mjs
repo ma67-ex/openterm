@@ -2,7 +2,7 @@
 // Checks the BT math against hand-computed values, and checks the lab (sweep, walk-forward) for leaks.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { backtest, run, sweep, walkForward, closesFrom, FASTS, SLOWS } from '../public/mods/btlib.js';
+import { backtest, run, sweep, walkForward, closesFrom, logY, logTicks, FASTS, SLOWS } from '../public/mods/btlib.js';
 
 const near = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol, `${a} != ${b}`);
 const fixture = (s) => JSON.parse(readFileSync(new URL(`./fixtures/${s}.json`, import.meta.url))).close;
@@ -81,6 +81,16 @@ assert.equal(wf.days, wf.folds.length * test);
 // the pair chosen for a fold must not depend on any price from its test window on
 const f0 = wf.folds[0], leaked = walkForward(noisy(aapl, f0.testFrom)).folds[0];
 assert.deepEqual([leaked.fast, leaked.slow, leaked.trainSharpe], [f0.fast, f0.slow, f0.trainSharpe]);
+
+// ---- log-scale chart helpers ----
+// on a 1x..4x axis 100px tall, 2x sits exactly halfway: each doubling gets the same height
+near(logY(1, 1, 4, 100), 100);
+near(logY(2, 1, 4, 100), 50);
+near(logY(4, 1, 4, 100), 0);
+near(logY(3, 1, 9, 90), 45);
+assert.deepEqual(logTicks(0.7, 9.5), [1, 2, 4, 8]);
+assert.deepEqual(logTicks(0.3, 0.9), [0.5]);
+assert.deepEqual(logTicks(1.1, 1.9), []);
 
 // ---- closesFrom ----
 // prefers the dividend-adjusted series, drops nulls, falls back to raw closes

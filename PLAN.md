@@ -1,6 +1,6 @@
 # PLAN: OpenTerm backtest lab
 
-Status: tasks 1 to 8 done (2026-10-28). Remaining: task 9 (log-scale chart) and task 10 (README write-up).
+Status: tasks 1 to 9 done (2026-10-28). Remaining: task 10 (README write-up).
 
 ## 1. Goal and definition of done
 

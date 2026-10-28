@@ -1,7 +1,7 @@
 // BT: moving-average crossover backtest lab. Single run, parameter sweep, and walk-forward, from the same daily
 // history GP uses. The math lives in btlib.js so node can test it.
 import { esc, cls, msg, getJSON, registerCommand, registerWidget, openWidget, loadCSS } from '../core.js';
-import { backtest, sweep, walkForward, closesFrom, FASTS, SLOWS } from './btlib.js';
+import { backtest, sweep, walkForward, closesFrom, logY, logTicks, FASTS, SLOWS } from './btlib.js';
 
 if (typeof document !== 'undefined') loadCSS(new URL('./backtest.css', import.meta.url));
 
@@ -17,10 +17,16 @@ export function windows(a) {
   return Number.isInteger(f) && Number.isInteger(s) && f >= 2 && f < s && s <= 400 ? [f, s] : null;
 }
 
+// Equity curves on a log scale (linear only if a value is not positive). Labels are HTML, not SVG text,
+// because the SVG stretches to fit the panel and would distort text.
 function curves(a, b) {
-  const W = 800, H = 220, all = [...a, ...b], lo = Math.min(...all), hi = Math.max(...all);
-  const pts = (v) => v.map((y, i) => `${((i / (v.length - 1)) * W).toFixed(1)},${(H - ((y - lo) / (hi - lo || 1)) * H).toFixed(1)}`).join(' ');
-  return `<svg class="bt-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline class="bt-h" points="${pts(b)}"/><polyline class="bt-s" points="${pts(a)}"/></svg>`;
+  const W = 800, H = 220, lo = Math.min(...a, ...b), hi = Math.max(...a, ...b), log = lo > 0;
+  const y = (v) => (log ? logY(v, lo, hi, H) : H - ((v - lo) / (hi - lo || 1)) * H);
+  const pts = (v) => v.map((p, i) => `${((i / (v.length - 1)) * W).toFixed(1)},${y(p).toFixed(1)}`).join(' ');
+  const ticks = log ? logTicks(lo, hi) : [];
+  return `<svg class="bt-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${ticks.map((t) => `<line class="bt-grid-l" x1="0" x2="${W}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/>`).join('')}`
+    + `<polyline class="bt-h" points="${pts(b)}"/><polyline class="bt-s" points="${pts(a)}"/></svg>`
+    + ticks.map((t) => { const top = (y(t) / H) * 100; return `<span class="bt-tick${top < 10 ? ' below' : ''}" style="top:${top.toFixed(1)}%">${t}x</span>`; }).join('');
 }
 
 const metrics = (a, b, la = 'Strategy', lb = 'Buy &amp; Hold') => {
@@ -32,7 +38,7 @@ const metrics = (a, b, la = 'Strategy', lb = 'Buy &amp; Hold') => {
 function single(d, w, cost) {
   const r = backtest(d.c, w[0], w[1], { cost });
   return `<div class="bt-head"><b>${esc(d.s)}</b> SMA ${w[0]}/${w[1]} <span class="bt-mu">${day(d.t[r.from])} to ${day(d.t.at(-1))}, ${r.eqS.length} days, ${r.trades} trades</span></div>`
-    + `<div class="bt-chart">${curves(r.eqS, r.eqH)}</div><div class="bt-note"><i class="bt-k s"></i>strategy <i class="bt-k h"></i>buy &amp; hold, growth of 1</div>`
+    + `<div class="bt-chart">${curves(r.eqS, r.eqH)}</div><div class="bt-note"><i class="bt-k s"></i>strategy <i class="bt-k h"></i>buy &amp; hold, growth of 1 (log scale)</div>`
     + metrics(r.strategy, r.hold)
     + `<div class="bt-note">Measured from day ${w[1]}, the first day a position can exist, for both columns.</div>`;
 }

@@ -4,7 +4,10 @@
 .bt-head{padding:6px 8px;font-size:14px}
 .bt-head b{color:var(--amber)}
 .bt-mu{color:var(--mute);font-size:11px;margin-left:8px}
-.bt-chart{height:220px;margin:4px 6px;border:1px solid var(--line)}
+.bt-chart{position:relative;height:220px;margin:4px 6px;border:1px solid var(--line)}
+.bt-grid-l{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.bt-tick{position:absolute;right:4px;transform:translateY(-110%);color:var(--mute);font-size:10px;pointer-events:none}
+.bt-tick.below{transform:translateY(10%)}
 .bt-svg{display:block;width:100%;height:100%}
 .bt-svg polyline{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
 .bt-s{stroke:var(--amber)}

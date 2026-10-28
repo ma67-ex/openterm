@@ -16,6 +16,16 @@ export function closesFrom(res) {
   return { c, t, adjusted };
 }
 
+// Log-scale chart helpers. Pixel y for value v when [lo, hi] spans height H (top = hi): equal ratios get
+// equal distances, so a doubling looks the same in year 1 and year 10.
+export const logY = (v, lo, hi, H) => H - (Math.log(v / lo) / (Math.log(hi / lo) || 1)) * H;
+// gridline values for a growth-of-1 chart: powers of 2 inside [lo, hi]
+export function logTicks(lo, hi) {
+  const out = [];
+  for (let k = Math.ceil(Math.log2(lo)); 2 ** k <= hi; k++) out.push(2 ** k);
+  return out;
+}
+
 const growth = (r) => { let e = 1; return r.map((x) => (e *= 1 + x)); };
 
 // daily returns r -> headline stats; risk-free rate 0, Sharpe annualized with 252 days
