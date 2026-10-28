@@ -1,6 +1,6 @@
 # PLAN: OpenTerm backtest lab
 
-Status: tasks 1 to 9 done (2026-10-28). Remaining: task 10 (README write-up).
+Status: all 10 tasks done (2026-10-28). Only the optional stretch items in section 7 remain.
 
 ## 1. Goal and definition of done
 
@@ -15,7 +15,7 @@ Done when every box is checked:
 - [x] Lookahead guard: a test proves the real strategy passes, and a deliberately peeking variant is caught and fails.
 - [x] Python cross-check: the original `backtester.py` math, run on the same stored price file, matches the JS numbers within 1e-9.
 - [x] `node scripts/test-backtest.mjs` and `python3 scripts/crosscheck.py` both exit 0.
-- [ ] README has a BT section, a screenshot, and a short method-and-limits write-up with numbers from the stored fixture.
+- [x] README has a BT section, a screenshot, and a short method-and-limits write-up with numbers from the stored fixture.
 
 ## 2. Current state (what I found)
 
