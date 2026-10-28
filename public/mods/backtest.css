@@ -1,0 +1,16 @@
+.bt-head{padding:6px 8px;font-size:14px}
+.bt-head b{color:var(--amber)}
+.bt-mu{color:var(--mute);font-size:11px;margin-left:8px}
+.bt-chart{height:220px;margin:4px 6px;border:1px solid var(--line)}
+.bt-svg{display:block;width:100%;height:100%}
+.bt-svg polyline{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
+.bt-s{stroke:var(--amber)}
+.bt-h{stroke:var(--mute)}
+.bt-note{color:var(--mute);padding:3px 8px;font-size:11px}
+.bt-k{display:inline-block;width:10px;height:3px;margin:0 4px 1px 8px;vertical-align:middle}
+.bt-k.s{background:var(--amber)}
+.bt-k.h{background:var(--mute)}
+.bt-tbl{width:100%;border-collapse:collapse;margin:6px 0}
+.bt-tbl td{color:var(--txt)}
+.bt-tbl td.up,.bt-tbl td.dn{font-weight:700}
+.bt-tbl td.bt-l,.bt-tbl th.bt-l{text-align:left}

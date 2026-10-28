@@ -13,3 +13,4 @@ import './earnings.js';
 import './congress.js';
 import './politicians.js';
 import './wire.js';
+import './backtest.js';

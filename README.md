@@ -29,6 +29,7 @@ Then open http://localhost:3200. No dependencies, Node 18+.
 - Earnings-call coverage headlines on `ERN` (no free full-transcript source exists, so this is press writeups, not the call itself)
 - US Congress, Trump and cabinet stock trades (`CONG`, `POL`)
 - Day-count convention math (`/api/daycount`)
+- Moving-average crossover backtest vs buy & hold (`AAPL BT 50 200`): CAGR, Sharpe, max drawdown, equity curves. Signal on day t trades on day t+1, no fees. Check the math with `node scripts/test-backtest.mjs`
 - Total crypto market cap and BTC/ETH dominance in the `CRYPTO` widget header
 - `ECB` widget: euro-area reference rate chart + majors strip (USD, GBP, JPY, CHF, CNY, AUD, CAD)
 
