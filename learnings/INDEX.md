@@ -6,3 +6,4 @@
 - [GitHub Actions cron drift was silently starving every hours-gated seeder](2026-10-19-github-actions-cron-drift-seeder-fix.md) — read prod Upstash directly to tell "code bug" from "scheduler never ran it" apart, then replaced narrow per-hour windows with an idempotent per-day-threshold check
 - [Adding a backtest command (BT) to OpenTerm](2026-10-28-bt-sma-backtest-command.md) — pure JS port of SMA backtest, hand-computed test, no pandas
 - [Backtest lab: walk-forward, leak tests, exact Python cross-check](2026-10-28-backtest-lab-walk-forward-crosscheck.md) — common sweep window, peek variant must fail, stub yfinance to test the original code
+- [Generated README numbers and Obscura DOM checks](2026-10-28-generated-readme-numbers-and-obscura-dom-checks.md) — bt-report --check, Obscura screenshots blank so assert on DOM
