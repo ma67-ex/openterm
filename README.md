@@ -56,25 +56,25 @@ A cost box (basis points per side, default 0) applies to every tab.
 <!-- bt-report:start -->
 Stored daily closes, 2026-10-27 back 10 years, no costs. Regenerate with `node scripts/bt-report.mjs --write`.
 
-| Ticker | 50/200 Sharpe (CAGR) | Buy & hold Sharpe (CAGR) | Best of 22 pairs, in-sample | Walk-forward out-of-sample Sharpe (CAGR) | Buy & hold, same days |
-|---|---|---|---|---|---|
-| AAPL | 0.65 (14.6%) | 0.96 (27.4%) | 10/200: 0.95 | 0.25 (3.0%) | 0.75 (18.9%) |
-| SPY | 0.70 (10.3%) | 0.84 (15.0%) | 10/100: 1.00 | 0.94 (12.5%) | 0.98 (16.7%) |
-| VFC | 0.05 (-2.7%) | 0.01 (-10.2%) | 20/200: 0.32 | 0.01 (-2.5%) | -0.30 (-25.4%) |
+| Ticker | 50/200 Sharpe (CAGR) | Buy & hold Sharpe (CAGR) | Best of 22 pairs, full period | Walk-forward out-of-sample Sharpe (CAGR) | Best pair in hindsight, same days | Buy & hold, same days |
+|---|---|---|---|---|---|---|
+| AAPL | 0.65 (14.6%) | 0.96 (27.4%) | 10/200: 0.95 | 0.25 (3.0%) | 10/200: 0.74 | 0.75 (18.9%) |
+| SPY | 0.70 (10.3%) | 0.84 (15.0%) | 10/100: 1.00 | 0.94 (12.5%) | 20/200: 1.33 | 0.98 (16.7%) |
+| VFC | 0.05 (-2.7%) | 0.01 (-10.2%) | 20/200: 0.32 | 0.01 (-2.5%) | 20/200: 0.22 | -0.30 (-25.4%) |
 <!-- bt-report:end -->
 
 What the table says:
 
-- **AAPL:** the best pair in hindsight scores a Sharpe of 0.95, but choosing pairs the same way without hindsight earned 0.25. The gap is what overfitting looks like. Buy and hold beat every version.
-- **SPY:** out of sample the rule roughly matched the index on risk-adjusted terms but earned less.
-- **VFC** (down about 56% over the decade): the trend filter cut the damage, losing 2.5% a year out of sample against 25.4% for holding.
+- **AAPL:** over the walk-forward test years, the best single pair picked with hindsight scores a Sharpe of 0.74, but choosing pairs the same way without hindsight earned 0.25. That gap is the cost of not knowing the future, and it is what overfitting looks like. Buy and hold beat every version.
+- **SPY:** out of sample the rule roughly matched the index on risk-adjusted terms (0.94 against 0.98) but earned less, while hindsight would have promised 1.33.
+- **VFC** (down about 55% over the decade): the trend filter cut the damage, losing 2.5% a year out of sample against 25.4% for holding.
 
 ### Method
 
 - The signal from close t-1 sets the position for day t. A test proves it: replacing every price from day t onward never changes a position up to day t, and a deliberately peeking variant is caught.
 - Stats start on the first day a position can exist, for both columns, so the warmup period does not dilute them.
 - Sharpe uses a 0% risk-free rate and 252 trading days.
-- Walk-forward folds never overlap, and the pair picked for a fold provably does not depend on any price in its test year.
+- Walk-forward folds never overlap, and the pair picked for each fold provably does not depend on any price in its test year. The stitched out-of-sample series starts flat, and switching pairs between folds is charged as a trade.
 
 ### Limits
 

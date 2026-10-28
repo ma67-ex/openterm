@@ -62,12 +62,12 @@ function sweepView(d, cost) {
 function wfView(d, cost) {
   const wf = walkForward(d.c, { cost });
   if (!wf.folds.length) return msg(`NOT ENOUGH HISTORY FOR A WALK-FORWARD ON ${d.s} (need ${Math.max(...SLOWS) + 4 * 252} days, have ${d.c.length})`);
-  const is = sweep(d.c, { cost }).best;
+  const hs = wf.hindsight;
   const rows = wf.folds.map((f) => `<tr><td class="bt-l">${day(d.t[f.testFrom])} to ${day(d.t[f.testTo - 1])}</td><td>${f.fast}/${f.slow}</td><td>${dec(f.trainSharpe)}</td><td class="${cls(f.test.total)}">${pct(f.test.total)}</td><td class="${cls(f.hold.total)}">${pct(f.hold.total)}</td></tr>`).join('');
-  const gap = is.sharpe != null && wf.oos.sharpe != null ? is.sharpe - wf.oos.sharpe : null;
+  const gap = hs.sharpe != null && wf.oos.sharpe != null ? hs.sharpe - wf.oos.sharpe : null;
   return `<div class="bt-head"><b>${esc(d.s)}</b> Walk-forward <span class="bt-mu">${wf.folds.length} folds: pick the best pair on 3 years, trade it on the next 1 year</span></div>`
     + metrics(wf.oos, wf.oosHold, 'Out-of-sample', 'Buy &amp; Hold')
-    + `<div class="bt-note">In-sample best ${is.fast}/${is.slow} had Sharpe ${dec(is.sharpe)}; out of sample the method earned ${dec(wf.oos.sharpe)}${gap == null ? '' : ` (a gap of ${dec(gap)})`}. The gap is the cost of choosing parameters with hindsight.</div>`
+    + `<div class="bt-note">On these same ${wf.days} days, the best pair picked with hindsight (${hs.fast}/${hs.slow}) had Sharpe ${dec(hs.sharpe)}; picking without hindsight earned ${dec(wf.oos.sharpe)}${gap == null ? '' : ` (a gap of ${dec(gap)})`}. The gap is the cost of not knowing the future.</div>`
     + `<table class="bt-tbl"><thead><tr><th class="bt-l">Test year</th><th>Pair chosen</th><th>Train Sharpe</th><th>Test return</th><th>Hold return</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 

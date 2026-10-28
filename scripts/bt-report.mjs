@@ -17,9 +17,9 @@ const rows = SYMS.map((s) => {
 const table = [
   `Stored daily closes, ${rows[0].to} back 10 years, no costs. Regenerate with \`node scripts/bt-report.mjs --write\`.`,
   '',
-  '| Ticker | 50/200 Sharpe (CAGR) | Buy & hold Sharpe (CAGR) | Best of 22 pairs, in-sample | Walk-forward out-of-sample Sharpe (CAGR) | Buy & hold, same days |',
-  '|---|---|---|---|---|---|',
-  ...rows.map(({ s, r, sw, wf }) => `| ${s} | ${dec(r.strategy.sharpe)} (${pct(r.strategy.cagr)}) | ${dec(r.hold.sharpe)} (${pct(r.hold.cagr)}) | ${sw.best.fast}/${sw.best.slow}: ${dec(sw.best.sharpe)} | ${dec(wf.oos.sharpe)} (${pct(wf.oos.cagr)}) | ${dec(wf.oosHold.sharpe)} (${pct(wf.oosHold.cagr)}) |`),
+  '| Ticker | 50/200 Sharpe (CAGR) | Buy & hold Sharpe (CAGR) | Best of 22 pairs, full period | Walk-forward out-of-sample Sharpe (CAGR) | Best pair in hindsight, same days | Buy & hold, same days |',
+  '|---|---|---|---|---|---|---|',
+  ...rows.map(({ s, r, sw, wf }) => `| ${s} | ${dec(r.strategy.sharpe)} (${pct(r.strategy.cagr)}) | ${dec(r.hold.sharpe)} (${pct(r.hold.cagr)}) | ${sw.best.fast}/${sw.best.slow}: ${dec(sw.best.sharpe)} | ${dec(wf.oos.sharpe)} (${pct(wf.oos.cagr)}) | ${wf.hindsight.fast}/${wf.hindsight.slow}: ${dec(wf.hindsight.sharpe)} | ${dec(wf.oosHold.sharpe)} (${pct(wf.oosHold.cagr)}) |`),
 ].join('\n');
 
 const mode = process.argv[2];

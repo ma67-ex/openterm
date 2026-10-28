@@ -32,7 +32,7 @@ const growth = (r) => { let e = 1; return r.map((x) => (e *= 1 + x)); };
 export function stats(r) {
   const n = r.length, eq = growth(r), last = eq[n - 1] ?? 1;
   const mean = r.reduce((s, v) => s + v, 0) / n, sd = n > 1 ? stdev(r) : 0;
-  let peak = -Infinity, mdd = 0;
+  let peak = 1, mdd = 0; // starting equity counts as a peak, so a first-day loss is a drawdown
   for (const e of eq) { peak = Math.max(peak, e); mdd = Math.min(mdd, e / peak - 1); }
   return {
     total: last - 1,
@@ -65,7 +65,8 @@ export function backtest(closes, fast = 50, slow = 200, { cost = 0, from = slow 
 }
 
 const pairs = (fasts, slows) => fasts.flatMap((f) => slows.filter((s) => f < s).map((s) => [f, s]));
-const better = (a, b) => (a.sharpe ?? -Infinity) > (b?.sharpe ?? -Infinity);
+// b == null: the first candidate always wins, so a best pair exists even when every Sharpe is null
+const better = (a, b) => b == null || (a.sharpe ?? -Infinity) > (b.sharpe ?? -Infinity);
 
 // Every fast/slow pair on one common window (from the largest slow on), so the pairs are comparable.
 export function sweep(closes, { fasts = FASTS, slows = SLOWS, cost = 0 } = {}) {
@@ -76,16 +77,28 @@ export function sweep(closes, { fasts = FASTS, slows = SLOWS, cost = 0 } = {}) {
 }
 
 // Rolling walk-forward: pick the best pair by Sharpe on each train window, then score it only on the
-// next unseen test window. The test windows are stitched into one out-of-sample (OOS) return series.
+// next unseen test window. The test windows are stitched into one out-of-sample (OOS) series that starts
+// flat; switching pairs between folds is charged as a trade. `hindsight` is the best single pair over
+// the same OOS days, chosen after seeing them, so the gap to `oos` compares like with like.
 export function walkForward(closes, { fasts = FASTS, slows = SLOWS, cost = 0, train = 3 * DAYS, test = DAYS } = {}) {
   const runs = pairs(fasts, slows).map(([fast, slow]) => ({ fast, slow, ...run(closes, fast, slow, cost) }));
-  const mkt = runs[0]?.mkt ?? [], start = Math.max(...slows), folds = [], oos = [], oosHold = [];
+  const mkt = runs[0]?.mkt ?? [], start = Math.max(...slows), folds = [], oosPos = [], oos = [], oosHold = [];
+  let held = 0;
   for (let a = start; a + train + test <= closes.length; a += test) {
     const b = a + train, e = b + test;
     const pick = runs.reduce((p, r) => { const st = stats(r.strat.slice(a, b)); return better(st, p?.st) ? { r, st } : p; }, null);
-    const rs = pick.r.strat.slice(b, e), rh = mkt.slice(b, e);
+    const rs = [];
+    for (let i = b; i < e; i++) {
+      const p = pick.r.pos[i];
+      rs.push(p * mkt[i] - (cost / 1e4) * Math.abs(p - held));
+      oosPos.push(p); held = p;
+    }
+    const rh = mkt.slice(b, e);
     oos.push(...rs); oosHold.push(...rh);
     folds.push({ trainFrom: a, testFrom: b, testTo: e, fast: pick.r.fast, slow: pick.r.slow, trainSharpe: pick.st.sharpe, test: stats(rs), hold: stats(rh) });
   }
-  return { folds, oos: oos.length ? stats(oos) : null, oosHold: oosHold.length ? stats(oosHold) : null, days: oos.length };
+  if (!folds.length) return { folds, oos: null, oosHold: null, hindsight: null, oosPos, oosRet: oos, days: 0 };
+  const from = folds[0].testFrom, to = folds.at(-1).testTo;
+  const hindsight = runs.map((r) => ({ fast: r.fast, slow: r.slow, ...stats(r.strat.slice(from, to)) })).reduce((p, c) => (better(c, p) ? c : p), null);
+  return { folds, oos: stats(oos), oosHold: stats(oosHold), hindsight, oosPos, oosRet: oos, days: oos.length };
 }

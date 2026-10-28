@@ -2,7 +2,7 @@
 // Checks the BT math against hand-computed values, and checks the lab (sweep, walk-forward) for leaks.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { backtest, run, sweep, walkForward, closesFrom, logY, logTicks, FASTS, SLOWS } from '../public/mods/btlib.js';
+import { backtest, run, stats, sweep, walkForward, closesFrom, logY, logTicks, FASTS, SLOWS } from '../public/mods/btlib.js';
 
 const near = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol, `${a} != ${b}`);
 const fixture = (s) => JSON.parse(readFileSync(new URL(`./fixtures/${s}.json`, import.meta.url))).close;
@@ -78,9 +78,35 @@ wf.folds.forEach((f, i) => {
   if (i) assert.equal(f.testFrom, wf.folds[i - 1].testTo, 'test windows are back to back, never overlapping');
 });
 assert.equal(wf.days, wf.folds.length * test);
-// the pair chosen for a fold must not depend on any price from its test window on
-const f0 = wf.folds[0], leaked = walkForward(noisy(aapl, f0.testFrom)).folds[0];
-assert.deepEqual([leaked.fast, leaked.slow, leaked.trainSharpe], [f0.fast, f0.slow, f0.trainSharpe]);
+// the pair chosen for each fold must not depend on any price from its test window on
+wf.folds.forEach((f, k) => {
+  const leaked = walkForward(noisy(aapl, f.testFrom)).folds[k];
+  assert.deepEqual([leaked.fast, leaked.slow, leaked.trainSharpe], [f.fast, f.slow, f.trainSharpe], `fold ${k} leaks`);
+});
+// hindsight is scored on exactly the OOS days, and with hindsight you can only do as well or better
+assert.ok(wf.hindsight.sharpe >= wf.oos.sharpe);
+
+// costs in walk-forward: the stitched series starts flat and every position change, including a switch
+// between folds, is charged once: r = pos * mkt - cost * |pos - previous pos|
+const C = 50, wfc = walkForward(aapl, { cost: C }), mkt = run(aapl, 50, 200).mkt;
+let prev = 0;
+wfc.oosRet.forEach((r, k) => {
+  const i = wfc.folds[0].testFrom + k, p = wfc.oosPos[k];
+  near(r, p * mkt[i] - (C / 1e4) * Math.abs(p - prev), 1e-15);
+  prev = p;
+});
+
+// an asset that only falls never goes long: every Sharpe is null, but sweep and walk-forward must still work
+const falling = Array.from({ length: 1400 }, (_, i) => 100 * 0.999 ** i);
+assert.ok(sweep(falling).best, 'sweep picks a pair even when every Sharpe is null');
+const wff = walkForward(falling);
+assert.ok(wff.folds.length > 0 && wff.hindsight);
+assert.equal(wff.oos.total, 0);
+
+// drawdown counts a loss on the very first day: starting equity is the first peak
+near(stats([-0.1, -0.1]).maxDD, 0.9 * 0.9 - 1);
+near(stats([-0.5, 0]).maxDD, -0.5);
+assert.equal(walkForward(aapl.slice(0, 1000)).oos, null, 'too little data: no folds, no crash');
 
 // ---- log-scale chart helpers ----
 // on a 1x..4x axis 100px tall, 2x sits exactly halfway: each doubling gets the same height
