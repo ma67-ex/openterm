@@ -20,7 +20,10 @@ export const status = (text, bad = false) => { $('sbdata').textContent = text; $
 export function workspace(title, html) {
   const p = document.querySelector('.panel[data-ws]') || document.querySelector('.panel:nth-child(2)');
   p.querySelector('h2').textContent = title;
-  const box = p.querySelector('.pb');
+  // A fresh body per command: the old one is detached, so any slow load or live refresh still holding it
+  // sees box.isConnected === false and stops instead of drawing over the new command.
+  const old = p.querySelector('.pb'), box = old.cloneNode(false);
+  old.replaceWith(box);
   if (html != null) box.innerHTML = html;
   return box;
 }
