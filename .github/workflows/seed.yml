@@ -7,12 +7,16 @@ jobs:
   seed:
     environment: Upstash
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency: { group: seed, cancel-in-progress: false }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: node seeders/run.js ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          EDGAR_UA: ${{ vars.EDGAR_UA }}

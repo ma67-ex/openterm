@@ -18,6 +18,7 @@ const used = await getNum(counterKey);
 const overBudget = used > DAILY_BUDGET * 0.8; // ponytail: crude throttle, only core groups run when over 80% of budget
 if (overBudget) console.log(`budget ${used}/${DAILY_BUDGET}: core groups only`);
 
+const failed = [], STALE_MS = 2 * 86400e3;
 for (const [key, cfg] of Object.entries(GROUPS)) {
   const { when, hours } = cfg;
   if (!force && when === 'weekday' && !weekday) { console.log(`${key}: market closed, skip`); continue; }
@@ -36,14 +37,29 @@ for (const [key, cfg] of Object.entries(GROUPS)) {
   if (!force && cfg.slot && Math.floor(now.getUTCMinutes() / 10) % cfg.slot[1] !== cfg.slot[0]) continue;
   if (!force && cfg.everyMin && now.getUTCMinutes() % cfg.everyMin >= 10) continue;
   if (overBudget && !['indices', 'watchlist'].includes(key)) continue;
-  let data;
-  try { data = await (cfg.fetch ?? FETCH[cfg.source])(cfg); } catch (e) { console.log(`${key}: ${e.message}`); continue; }
-  if (!data.length) { console.log(`${key}: no data`); continue; }
-  const hash = createHash('sha1').update(JSON.stringify(data)).digest('hex');
-  if (old === undefined) [old] = await mget([`snap:${key}`]);
-  if (old?.hash === hash) { console.log(`${key}: unchanged, no write`); continue; }
-  await set(`snap:${key}`, { asOf: now.toISOString(), hash, rows: data }, SNAP_TTL);
-  console.log(`${key}: wrote ${data.length} rows`);
+  try {
+    const data = await (cfg.fetch ?? FETCH[cfg.source])(cfg);
+    if (!data.length) {
+      // empty is also how a source says "transient outage, keep the old snapshot", so only fail once data goes stale
+      if (old === undefined) [old] = await mget([`snap:${key}`]);
+      const stale = !old?.asOf || now - Date.parse(old.asOf) > STALE_MS;
+      console.log(`${key}: no data${stale ? ', snapshot stale' : ', keeping old snapshot'}`);
+      if (stale) failed.push(key);
+      continue;
+    }
+    if (cfg.rows && data.length < cfg.rows.length) { console.log(`${key}: partial ${data.length}/${cfg.rows.length}, keep old snapshot`); continue; }
+    const hash = createHash('sha1').update(JSON.stringify(data)).digest('hex');
+    if (old === undefined) [old] = await mget([`snap:${key}`]);
+    if (old?.hash === hash) {
+      // hour-gated groups read asOf to know the run happened, so refresh it (rows must be rewritten with it)
+      if (hours) await set(`snap:${key}`, { asOf: now.toISOString(), hash, rows: data }, SNAP_TTL);
+      console.log(`${key}: unchanged, ${hours ? 'asOf refreshed' : 'no write'}`);
+      continue;
+    }
+    await set(`snap:${key}`, { asOf: now.toISOString(), hash, rows: data }, SNAP_TTL);
+    console.log(`${key}: wrote ${data.length} rows`);
+  } catch (e) { console.log(`${key}: ${e.message}`); failed.push(key); }
 }
 await incrBy(counterKey, stats.commands, 2 * 86400);
 console.log(`done, ${stats.commands} commands (${usingUpstash ? 'upstash' : 'local file'})`);
+if (failed.length) { console.log(`FAILED groups: ${failed.join(', ')}`); process.exitCode = 1; }

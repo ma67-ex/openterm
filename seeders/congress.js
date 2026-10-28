@@ -1,5 +1,5 @@
 // US Congress stock trades (STOCK Act periodic transaction reports): House Clerk XML index + PDFs, Senate eFD search + HTML reports.
-// Official sources, no key. House PDFs need poppler's pdftotext (present on ubuntu runners and macOS brew).
+// Official sources, no key. House PDFs need poppler's pdftotext (macOS brew; ubuntu runners need `apt-get install poppler-utils`, see seed.yml).
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

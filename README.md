@@ -1,6 +1,6 @@
 # OpenTerm
 
-![Node](https://img.shields.io/badge/node-18%2B-339933)
+![Node](https://img.shields.io/badge/node-20.12%2B-339933)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-2ea44f)
 ![Data](https://img.shields.io/badge/data-free%20sources%20only-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -17,7 +17,9 @@ An open-source, Bloomberg-style market terminal built only on free data sources.
 npm start
 ```
 
-Then open http://localhost:3200. No dependencies, Node 18+.
+Then open http://localhost:3200. No dependencies, Node 20.12+ (`process.loadEnvFile` reads `.env`).
+
+Without Upstash env vars, data is kept in a local file store (`cache/store.json`). Fill it with `npm run seed`, which forces every group to run. If `.env` has Upstash credentials, that writes to Upstash instead. `.env.example` lists the variables.
 
 ## What works now
 

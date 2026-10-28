@@ -4,7 +4,6 @@ const FEEDS = [
   ['Yahoo', 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US'],
   ['CNBC', 'https://www.cnbc.com/id/100003114/device/rss/rss.html'],
   ['MarketWatch', 'http://feeds.marketwatch.com/marketwatch/topstories/'],
-  ['Reuters', 'https://feeds.reuters.com/reuters/businessNews'],
   ['BBC', 'https://feeds.bbci.co.uk/news/business/rss.xml'],
 ];
 const LIMIT = 30;

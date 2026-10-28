@@ -5,7 +5,7 @@ const UA = { 'User-Agent': 'Mozilla/5.0 openterm' };
 const r2 = (x) => +x.toFixed(2);
 
 async function one({ s, n, sec }) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=1y&interval=1d`, { headers: UA });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=1y&interval=1d`, { headers: UA, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`${s} ${r.status}`);
   const res = (await r.json()).chart.result[0];
   const q = res.indicators.quote[0], ts = res.timestamp, m = res.meta;
