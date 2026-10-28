@@ -4,6 +4,14 @@ import { sma, returns, stdev } from './chartlib.js';
 
 export const DAYS = 252;
 
+// Daily closes from a Yahoo chart result. Uses the dividend-adjusted series when Yahoo sends it,
+// which is what yfinance auto_adjust=True gives the Python backtester.
+export function closesFrom(res) {
+  const raw = res.indicators?.quote?.[0]?.close ?? [], adj = res.indicators?.adjclose?.[0]?.adjclose;
+  const adjusted = adj?.length === raw.length;
+  return { c: (adjusted ? adj : raw).filter((x) => x != null && Number.isFinite(x)), adjusted };
+}
+
 const growth = (r) => { let e = 1; return r.map((x) => (e *= 1 + x)); };
 
 // returns r (daily) + equity eq (growth of 1) -> headline stats; risk-free rate 0, Sharpe annualized

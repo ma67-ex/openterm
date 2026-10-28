@@ -1,7 +1,7 @@
 // Run: node scripts/test-backtest.mjs
 // Checks the BT math against hand-computed values on a tiny synthetic price series.
 import assert from 'node:assert/strict';
-import { backtest } from '../public/mods/btlib.js';
+import { backtest, closesFrom } from '../public/mods/btlib.js';
 
 const near = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol, `${a} != ${b}`);
 
@@ -27,5 +27,11 @@ const flat = backtest(Array(10).fill(5), 2, 3);
 assert.equal(flat.trades, 0);
 assert.equal(flat.strategy.sharpe, null);
 assert.equal(flat.strategy.maxDD, 0);
+
+// closesFrom prefers the dividend-adjusted series, drops nulls, and falls back to raw closes
+const yres = (adj) => ({ indicators: { quote: [{ close: [10, null, 12] }], ...(adj && { adjclose: [{ adjclose: adj }] }) } });
+assert.deepEqual(closesFrom(yres([9, null, 11])), { c: [9, 11], adjusted: true });
+assert.deepEqual(closesFrom(yres()), { c: [10, 12], adjusted: false });
+assert.deepEqual(closesFrom(yres([9, 11])), { c: [10, 12], adjusted: false }); // length mismatch: do not trust it
 
 console.log('backtest: all checks passed');

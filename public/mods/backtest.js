@@ -1,7 +1,6 @@
 // BT: moving-average crossover backtest vs buy & hold, drawn from the same daily history GP uses.
 import { esc, cls, msg, getJSON, registerCommand, registerWidget, openWidget, loadCSS } from '../core.js';
-import { toBars } from './chartlib.js';
-import { backtest } from './btlib.js';
+import { backtest, closesFrom } from './btlib.js';
 
 if (typeof document !== 'undefined') loadCSS(new URL('./backtest.css', import.meta.url));
 
@@ -31,7 +30,7 @@ registerWidget('bt', {
       const j = await getJSON(`/api/chart?s=${encodeURIComponent(s)}&range=10y&interval=1d`);
       const res = j.chart?.result?.[0];
       if (!res) throw new Error('no data');
-      const c = toBars(res).c;
+      const { c, adjusted } = closesFrom(res);
       if (!box.isConnected) return;
       if (c.length <= w[1] + 1) { box.innerHTML = msg(`NOT ENOUGH HISTORY FOR ${s} (${c.length} days, need more than ${w[1] + 1})`); return; }
       const r = backtest(c, w[0], w[1]);
@@ -39,7 +38,7 @@ registerWidget('bt', {
       box.innerHTML = `<div class="bt-head"><b>${esc(s)}</b> SMA ${w[0]}/${w[1]} <span class="bt-mu">${c.length} daily closes, ${r.trades} trades</span></div>`
         + `<div class="bt-chart">${curves(r.eqS, r.eqH)}</div><div class="bt-note"><i class="bt-k s"></i>strategy <i class="bt-k h"></i>buy &amp; hold, growth of 1</div>`
         + `<table class="bt-tbl"><thead><tr><th class="bt-l">Metric</th><th>Strategy</th><th>Buy &amp; Hold</th></tr></thead><tbody>${row('Total return', 'total')}${row('CAGR', 'cagr')}${row('Sharpe', 'sharpe')}${row('Max drawdown', 'maxDD')}</tbody></table>`
-        + '<div class="bt-note">Signal on day t trades on day t+1 (no lookahead). No fees or slippage. Past results do not predict future returns.</div>';
+        + `<div class="bt-note">${adjusted ? 'Dividend-adjusted closes.' : 'Raw closes, NOT dividend-adjusted (Yahoo sent no adjusted series), so buy &amp; hold is understated.'} Signal on day t trades on day t+1 (no lookahead). No fees or slippage. Past results do not predict future returns.</div>`;
     } catch (e) { if (box.isConnected) box.innerHTML = msg(`NO BACKTEST FOR ${s}: ${e.message}`); }
   },
 });
