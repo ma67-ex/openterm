@@ -7,3 +7,4 @@
 - [Adding a backtest command (BT) to OpenTerm](2026-10-28-bt-sma-backtest-command.md) — pure JS port of SMA backtest, hand-computed test, no pandas
 - [Backtest lab: walk-forward, leak tests, exact Python cross-check](2026-10-28-backtest-lab-walk-forward-crosscheck.md) — common sweep window, peek variant must fail, stub yfinance to test the original code
 - [Generated README numbers and Obscura DOM checks](2026-10-28-generated-readme-numbers-and-obscura-dom-checks.md) — bt-report --check, Obscura screenshots blank so assert on DOM
+- [Full audit with four parallel auditors](2026-10-28-full-audit-four-parallel-auditors.md) — shared .pb broke stale guards, `this` lost via ??, fail seed job only on stale data
