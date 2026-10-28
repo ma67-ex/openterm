@@ -1,3 +1,6 @@
+.bt-root{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.bt-body{flex:1;min-height:0;overflow:auto}
+.bt-cost{width:42px;min-width:0;margin-left:4px;text-transform:none}
 .bt-head{padding:6px 8px;font-size:14px}
 .bt-head b{color:var(--amber)}
 .bt-mu{color:var(--mute);font-size:11px;margin-left:8px}
@@ -7,6 +10,8 @@
 .bt-s{stroke:var(--amber)}
 .bt-h{stroke:var(--mute)}
 .bt-note{color:var(--mute);padding:3px 8px;font-size:11px}
+.bt-note b{color:var(--txt)}
+.bt-warn{color:var(--amber);padding:3px 8px;font-size:11px}
 .bt-k{display:inline-block;width:10px;height:3px;margin:0 4px 1px 8px;vertical-align:middle}
 .bt-k.s{background:var(--amber)}
 .bt-k.h{background:var(--mute)}
@@ -14,3 +19,6 @@
 .bt-tbl td{color:var(--txt)}
 .bt-tbl td.up,.bt-tbl td.dn{font-weight:700}
 .bt-tbl td.bt-l,.bt-tbl th.bt-l{text-align:left}
+.bt-grid th,.bt-grid td{text-align:center}
+.bt-grid td.bt-cell{color:#fff}
+.bt-grid td.bt-best{outline:2px solid var(--amber);outline-offset:-2px;font-weight:700}

@@ -1,6 +1,6 @@
 # PLAN: OpenTerm backtest lab
 
-Status: draft for approval. Nothing below is built yet beyond the existing `BT` command.
+Status: tasks 1 to 8 done (2026-10-28). Remaining: task 9 (log-scale chart) and task 10 (README write-up).
 
 ## 1. Goal and definition of done
 
@@ -8,13 +8,13 @@ Turn the `BT` command from a single in-sample backtest into a small, honest back
 
 Done when every box is checked:
 
-- [ ] `BT` uses dividend-adjusted closes, matching the Python backtester's `auto_adjust=True`.
-- [ ] Costs: a `cost` input in basis points per side is applied on every position change. The table states the cost used, including when it is 0.
-- [ ] Sweep: a grid of fast and slow windows shows Sharpe per pair, the best pair, and how many pairs were tried.
-- [ ] Walk-forward: best pair chosen on each train window, judged only on the next unseen test window. Out-of-sample (OOS) results are shown next to the in-sample best.
-- [ ] Lookahead guard: a test proves the real strategy passes, and a deliberately peeking variant is caught and fails.
-- [ ] Python cross-check: the original `backtester.py` math, run on the same stored price file, matches the JS numbers within 1e-9.
-- [ ] `node scripts/test-backtest.mjs` and `python3 scripts/crosscheck.py` both exit 0.
+- [x] `BT` uses dividend-adjusted closes, matching the Python backtester's `auto_adjust=True`.
+- [x] Costs: a `cost` input in basis points per side is applied on every position change. The table states the cost used, including when it is 0.
+- [x] Sweep: a grid of fast and slow windows shows Sharpe per pair, the best pair, and how many pairs were tried.
+- [x] Walk-forward: best pair chosen on each train window, judged only on the next unseen test window. Out-of-sample (OOS) results are shown next to the in-sample best.
+- [x] Lookahead guard: a test proves the real strategy passes, and a deliberately peeking variant is caught and fails.
+- [x] Python cross-check: the original `backtester.py` math, run on the same stored price file, matches the JS numbers within 1e-9.
+- [x] `node scripts/test-backtest.mjs` and `python3 scripts/crosscheck.py` both exit 0.
 - [ ] README has a BT section, a screenshot, and a short method-and-limits write-up with numbers from the stored fixture.
 
 ## 2. Current state (what I found)
@@ -44,7 +44,7 @@ Wrong or fragile:
 - Default: 0 bps (your call). Costs are opt-in, and the table always prints the cost in use so a zero-cost result is never mistaken for a realistic one.
 
 **3.3 Parameter sweep.**
-- Grid: fast in {10, 20, 30, 50, 100}, slow in {50, 100, 150, 200, 250}, keeping fast below slow. That's 20 pairs.
+- Grid: fast in {10, 20, 30, 50, 100}, slow in {50, 100, 150, 200, 250}, keeping fast below slow. That's 22 pairs.
 - Shown as a heatmap table colored by Sharpe, with the count of pairs tested printed above it.
 - Trap: picking the best of 20 pairs inflates its Sharpe (multiple testing). This is handled by 3.4 and stated in the note. A deflated Sharpe ratio is a stretch item.
 

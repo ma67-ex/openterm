@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 *.log
 cache/
+scripts/.venv/
+__pycache__/
