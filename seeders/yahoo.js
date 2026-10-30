@@ -1,8 +1,11 @@
 // Yahoo chart endpoint adapter (unofficial, delayed). Returns normalised rows.
-const UA = { 'User-Agent': 'Mozilla/5.0 openterm' };
+import { yahooFetch, mapLimit, sparkRows } from '../lib/yahoo.js';
+import { cryptoRows } from '../lib/crypto-fallback.js';
 
-async function one([sym, name]) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=5d&interval=1d`, { headers: UA, signal: AbortSignal.timeout(15000) });
+const IN_FLIGHT = 8; // symbols fetched at once
+
+async function one([sym, name], opts) {
+  const r = await yahooFetch(`/v8/finance/chart/${encodeURIComponent(sym)}?range=5d&interval=1d`, opts);
   if (!r.ok) throw new Error(`${sym} ${r.status}`);
   const res = (await r.json()).chart.result[0];
   const m = res.meta, raw = res.indicators.quote[0].close, ts = res.timestamp;
@@ -14,7 +17,14 @@ async function one([sym, name]) {
   return { s: sym, n: name, p: last, c: +(last - prev).toFixed(4), pc: +(((last - prev) / prev) * 100).toFixed(2), v: m.regularMarketVolume ?? null };
 }
 
-export async function fetchRows(rows) {
-  const out = await Promise.allSettled(rows.map(one));
-  return out.filter((o) => o.status === 'fulfilled').map((o) => o.value);
+export async function fetchRows(rows, opts = {}) {
+  const done = await mapLimit(rows, IN_FLIGHT, (row) => one(row, opts));
+  const got = new Map(done.filter((o) => o.status === 'fulfilled').map((o) => [o.value.s, o.value]));
+  // symbols whose chart request kept failing get a second chance through the 20-at-a-time spark endpoint
+  const missing = rows.filter(([s]) => !got.has(s));
+  if (missing.length) for (const r of await sparkRows(missing, opts)) got.set(r.s, r);
+  // crypto pairs still missing: Kraken, then Binance.US
+  const still = missing.filter(([s]) => !got.has(s));
+  if (still.length) for (const r of await cryptoRows(still, opts)) got.set(r.s, r);
+  return rows.map(([s]) => got.get(s)).filter(Boolean); // the caller's order, unknown symbols left out
 }

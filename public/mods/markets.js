@@ -87,7 +87,7 @@ widget('crypto', 'CRYPTO  Top 30 by Market Cap', 'CRYPTO', (st) => {
     { h: 'VOL 24H', v: (r) => r.v, f: (r) => `<td>${money(r.v)}</td>` },
     { h: 'CHART', v: (r) => r.c24h, f: (r) => `<td>${spark(r.spark)}</td>` },
   ];
-  return `<div class="mk"><div class="mk-hd"><b>TOP 30 MKT CAP $${esc(money(total))}</b>${dom}${asOf('crypto2')}</div>${table(cols, [[null, rows]], st)}</div>`;
+  return `<div class="mk"><div class="mk-hd"><b>TOP 30 MKT CAP $${esc(money(total))}</b>${dom}${asOf('crypto2')}</div>${table(cols, [[null, rows]], st)}<div class="mk-attr">Powered by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a></div></div>`; // CoinGecko's API terms require this credit, no smaller than 10px
 });
 cmd('CRYPTO', 'crypto', 'CRYPTO  top 30 crypto by market cap');
 cmd('CCRV', 'crypto', 'CCRV  alias of CRYPTO');

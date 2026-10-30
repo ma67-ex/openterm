@@ -120,7 +120,7 @@ Free feeds are delayed or rate-limited. Real-time ticks, dealer-quoted fixed inc
 
 \*\* CoinGecko is wired via `CRYPTO` (seeded top-30 + live global dominance) and `/api/crypto`. ECB is wired via the `ECB` widget and `/api/ecb` (majors reference rates only, not the full dataflow catalog).
 
-\*\*\* Binance's public REST API geo-blocks by request IP per their own terms (`"Service unavailable from a restricted location"`, verified directly, 2026-10-15) — unreliable from US-region hosts. Not wired in; CoinGecko covers crypto without that risk.
+\*\*\* Binance's public REST API geo-blocks by request IP per their own terms (`"Service unavailable from a restricted location"`, verified directly, 2026-10-15) — unreliable from US-region hosts. The global exchange is not used. If Yahoo cannot price a crypto pair such as BTC-USD, quotes fall back to Kraken, then to Binance.US (the US exchange), neither of which needs a key. The yield curve falls back from FRED to the US Treasury, which needs no key either. See `docs/DATA_SOURCES.md` for every source checked and what its terms allow.
 
 ## License
 
