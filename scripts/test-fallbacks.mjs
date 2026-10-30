@@ -1,13 +1,14 @@
 // Offline tests for the Treasury and crypto fallbacks: fake fetch, no network. Run: node scripts/test-fallbacks.mjs
 import assert from 'node:assert/strict';
-import { parseCurveCsv, latestCurve, curveSince, COLS } from '../lib/treasury.js';
+import { parseCurveCsv, latestCurve, curveSince, clearTreasuryCache, COLS } from '../lib/treasury.js';
+import { resetYahoo } from '../lib/yahoo.js';
 import { cryptoRows } from '../lib/crypto-fallback.js';
 import { fetchRows } from '../seeders/yahoo.js';
 import { curvehist } from '../lib/handlers/fredseries.js';
 import { fetchCurve } from '../seeders/fred.js';
 
 const res = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => body, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) });
-const t = async (name, fn) => { await fn(); console.log('ok  ', name); };
+const t = async (name, fn) => { resetYahoo(); clearTreasuryCache(); await fn(); console.log('ok  ', name); };
 const HEAD = 'Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr","5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"';
 const row = (date, ten) => `${date},4.06,4.08,4.17,4.18,4.21,4.28,4.42,4.61,4.73,4.78,4.87,${ten},5.35,5.32`;
 
@@ -133,6 +134,31 @@ await t('fetchRows: a crypto pair Yahoo cannot answer is priced by Kraken', asyn
   const rows = await fetchRows([['BTC-USD', 'Bitcoin'], ['AAPL', 'Apple']], { fetchFn: f, sleep: async () => {} });
   assert.deepEqual(rows.map((r) => r.s), ['BTC-USD']); // AAPL is not crypto, so nobody else prices it
   assert.equal(rows[0].p, 78000);
+});
+
+await t('priority: with FRED healthy the Treasury is never contacted', async () => {
+  await withEnv({ FRED_API_KEY: 'k' }, async () => {
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      return res(200, { observations: [{ date: '2020-01-02', value: '1.5' }, { date: new Date().toISOString().slice(0, 10), value: '4.5' }] /* FRED sends oldest first */ });
+    };
+    const out = await curvehist();
+    assert.equal(out.body.curves[0].y[8], 4.5);
+    assert.ok(urls.length > 0 && urls.every((u) => u.includes('stlouisfed')), 'only FRED');
+  });
+});
+
+await t('Treasury years are remembered, so a second call on the same instance makes no requests', async () => {
+  await withEnv({ FRED_API_KEY: undefined }, async () => {
+    const calls = [];
+    globalThis.fetch = treasury(calls);
+    await curvehist();
+    const first = calls.length;
+    assert.equal(first, 6); // the last five years and this one
+    await curvehist();
+    assert.equal(calls.length, first);
+  });
 });
 
 console.log('fallbacks: all checks passed');

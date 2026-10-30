@@ -1,6 +1,6 @@
 // Offline tests for lib/yahoo.js: fake fetch and sleep, no network. Run: node scripts/test-yahoo.mjs
 import assert from 'node:assert/strict';
-import { yahooFetch, mapLimit, sparkRows, HOSTS } from '../lib/yahoo.js';
+import { yahooFetch, mapLimit, sparkRows, resetYahoo, HOSTS } from '../lib/yahoo.js';
 import { fetchRows } from '../seeders/yahoo.js';
 
 const res = (status, body = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => body, text: async () => JSON.stringify(body) });
@@ -17,7 +17,7 @@ const scripted = (...answers) => {
   return fn;
 };
 const sleeps = () => { const s = []; const fn = async (ms) => { s.push(ms); }; fn.s = s; return fn; };
-const t = async (name, fn) => { await fn(); console.log('ok  ', name); };
+const t = async (name, fn) => { resetYahoo(); await fn(); console.log('ok  ', name); }; // each test starts with a fresh view of Yahoo
 
 await t('a throttled first host is retried on the second host', async () => {
   const f = scripted(res(429), res(200, { ok: 1 })), sl = sleeps();
@@ -129,6 +129,79 @@ await t('quotes: nothing priced answers 502 with no cache headers, so an outage 
     assert.equal(out.cache, undefined);
     assert.equal((await quotes({ s: '' })).status, 400);
   } finally { globalThis.fetch = real; }
+});
+
+await t('the host that answered last is tried first next time', async () => {
+  const f1 = scripted(res(429), res(200)), sl = sleeps();
+  await yahooFetch('/x', { fetchFn: f1, sleep: sl, random: () => 0 });
+  assert.deepEqual(f1.calls, [HOSTS[0], HOSTS[1]]);
+  const f2 = scripted(res(200));
+  await yahooFetch('/x', { fetchFn: f2, sleep: sl });
+  assert.deepEqual(f2.calls, [HOSTS[1]]); // no wasted trip to the blocked host
+});
+
+await t('a Yahoo outage trips a breaker: later calls fail at once without touching the network, and in-flight retries stop', async () => {
+  const f = scripted(res(429));
+  const results = await Promise.allSettled(Array.from({ length: 8 }, () => yahooFetch('/x', { fetchFn: f, sleep: async () => {}, random: () => 0 })));
+  assert.ok(results.every((r) => r.status === 'rejected'));
+  assert.ok(f.calls.length < 20, `8 requests made ${f.calls.length} attempts; without the breaker it is 32`);
+  const before = f.calls.length;
+  await assert.rejects(yahooFetch('/x', { fetchFn: f }), /backing off/);
+  assert.equal(f.calls.length, before);
+});
+
+await t('one blocked host never trips the breaker: 8 parallel requests all reach the healthy host', async () => {
+  const f = async (url) => (new URL(url).hostname === HOSTS[0] ? res(429) : res(200, { ok: 1 }));
+  const results = await Promise.allSettled(Array.from({ length: 8 }, () => yahooFetch('/x', { fetchFn: f, sleep: async () => {}, random: () => 0 })));
+  assert.ok(results.every((r) => r.status === 'fulfilled'));
+  const later = [];
+  const g = async (url) => { later.push(new URL(url).hostname); return res(200, {}); };
+  await yahooFetch('/x', { fetchFn: g });
+  assert.deepEqual(later, [HOSTS[1]]); // and later requests skip the blocked host
+});
+
+await t('after the cooldown one probe gets through, and success closes the breaker', async () => {
+  let clock = 1_000_000;
+  const now = () => clock;
+  const down = scripted(res(503));
+  for (let i = 0; i < 3; i++) await yahooFetch('/x', { fetchFn: down, sleep: async () => {}, random: () => 0, now }).catch(() => {});
+  await assert.rejects(yahooFetch('/x', { fetchFn: down, now }), /backing off/);
+  clock += 21_000; // past the 20 s cooldown
+  const up = scripted(res(200));
+  assert.equal((await yahooFetch('/x', { fetchFn: up, now })).status, 200);
+  assert.equal((await yahooFetch('/x', { fetchFn: up, now })).status, 200); // closed again
+});
+
+await t('a failed probe after the cooldown reopens the breaker straight away', async () => {
+  let clock = 1_000_000;
+  const now = () => clock;
+  const down = scripted(res(503));
+  for (let i = 0; i < 3; i++) await yahooFetch('/x', { fetchFn: down, sleep: async () => {}, random: () => 0, now }).catch(() => {});
+  clock += 21_000;
+  await yahooFetch('/x', { fetchFn: down, sleep: async () => {}, random: () => 0, now }).catch(() => {});
+  const n = down.calls.length;
+  await assert.rejects(yahooFetch('/x', { fetchFn: down, now }), /backing off/);
+  assert.equal(down.calls.length, n);
+});
+
+await t('circuit:false ignores the breaker, and a 404 counts as Yahoo answering', async () => {
+  const bad = scripted(res(429));
+  for (let i = 0; i < 3; i++) await yahooFetch('/x', { fetchFn: bad, sleep: async () => {}, random: () => 0 }).catch(() => {});
+  await assert.rejects(yahooFetch('/x', { fetchFn: bad }), /backing off/);
+  assert.equal((await yahooFetch('/x', { fetchFn: scripted(res(200)), circuit: false })).status, 200);
+  resetYahoo();
+  const nf = scripted(res(404));
+  for (let i = 0; i < 10; i++) assert.equal((await yahooFetch('/x', { fetchFn: nf })).status, 404);
+  assert.equal((await yahooFetch('/x', { fetchFn: scripted(res(200)) })).status, 200); // never tripped
+});
+
+await t('priority: with Yahoo healthy, no fallback source is ever contacted', async () => {
+  const urls = [];
+  const chart = { chart: { result: [{ meta: { regularMarketPrice: 10, regularMarketTime: 1000, regularMarketVolume: 1 }, timestamp: [100, 1000], indicators: { quote: [{ close: [9, 10] }] } }] } };
+  const f = async (url) => { urls.push(String(url)); return res(200, chart); };
+  const rows = await fetchRows([['AAPL', 'a'], ['BTC-USD', 'b'], ['MSFT', 'c']], { fetchFn: f });
+  assert.equal(rows.length, 3);
+  assert.ok(urls.every((u) => /query[12]\.finance\.yahoo\.com\/v8\/finance\/chart\//.test(u)), urls.join('\n'));
 });
 
 console.log('yahoo: all checks passed');

@@ -35,6 +35,9 @@ None of the sources used needs a card or a new key. The only key in the project 
 ## What changed in the code
 
 - `lib/yahoo.js`: every Yahoo call retries up to four times across both Yahoo hosts with backoff, inside a time budget, at most 8 symbols at once, and a failing symbol is priced through the spark endpoint (20 per request). Quotes answer 502 with no cache header when nothing could be priced.
+- Yahoo stays first for everything. Each host's recent failures are remembered, so a blocked host stops being the first stop; if both hosts keep failing, Yahoo is skipped for 20 seconds and then probed again. Measured on 40 symbols with fake blocking: first host blocked 3.1 s and 80 requests down to 1.0 s and 48; Yahoo fully down 22 s and 168 requests down to 1.3 s and 11 (the old figure is longer than Vercel's 10 second function limit).
+- Fallbacks run only after Yahoo has failed, and a test checks that with Yahoo healthy no fallback source is contacted. FRED is likewise tried before the Treasury.
+- Treasury yield files are kept in memory (a day for past years, 30 minutes for this year), so repeated curve calls on one instance make no requests.
 - `lib/crypto-fallback.js`: a crypto pair such as BTC-USD that Yahoo cannot price is tried on Kraken, then Binance.US.
 - `lib/treasury.js`: the yield curve falls back from FRED to the US Treasury, in the handler and in the seeder.
 - CoinGecko credit added under the crypto table.
