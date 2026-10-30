@@ -31,3 +31,7 @@
 .mk-strip div{border:1px solid var(--line);padding:4px 10px;min-width:92px;text-align:center}
 .mk-strip small{display:block;color:var(--mute)}
 .mk-strip b{font-size:15px;color:var(--txt)}
+
+/* CoinGecko's API terms require a visible credit no smaller than 10px */
+.mk-attr{font-size:11px;opacity:.75;padding:6px 8px 2px;text-align:right}
+.mk-attr a{color:inherit;text-decoration:underline}

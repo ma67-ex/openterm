@@ -1,55 +1,45 @@
 # Free data sources that can back up Yahoo
 
-Checked on 2026-10-30. Latency and status come from live requests made from one US home connection, so "works here" is not proof it works from Vercel or GitHub Actions, whose shared addresses are throttled more. Limits and terms come from each vendor's own pricing or docs page that day; items marked "recall" were not re-checked.
+Checked on 2026-10-30. Latency and status come from live requests from one US home connection, so "works here" does not prove it works from Vercel or GitHub Actions. Terms were read on each provider's own page that day. This is a reading of the published terms, not legal advice.
 
-## What was fixed first
+The owner's position: OpenTerm is non-commercial and a personal project, and the owner accepts the risk of using Yahoo's unofficial endpoints.
 
-OpenTerm's quotes, history, search, company and seeder code all called Yahoo's `query1` host once, with no retry, and the batch quote path fired every symbol at once. Yahoo answers shared cloud addresses with 429 (and sometimes 401 or 403) in bursts, and an empty result was cached at the edge as a good one. All of those paths now share `lib/yahoo.js`:
+## Terms that decided which sources are used
 
-- Up to four tries, alternating `query1` and `query2`, with 400, 800 and 1600 ms pauses (plus jitter), inside a 9 second budget on the API and 40 seconds in seeders.
-- A 404 or 400 is final and is never retried.
-- At most 8 symbols in flight, instead of all at once.
-- A symbol whose chart request still fails gets a second chance through Yahoo's spark endpoint, which prices up to 20 symbols per request (no volume).
-- If nothing at all could be priced, quotes now answer 502 with no cache header.
+Non-commercial does not rescue a source whose terms forbid showing its data to other people, and OpenTerm is a public site. Those sources are not used:
 
-## The table
+| Source | Signup | What its terms say | Used? |
+|---|---|---|---|
+| Finnhub (free) | Free key | Personal use only; no redistributing or sharing the data or derived results with any third party | No |
+| Tiingo (free) | Free key | Internal use only; the data may not be displayed or shared | No |
+| Financial Modeling Prep (free) | Free key | Individual, personal, non-business use; no showing data on any website or app used by several people, free or paid | No |
+| Twelve Data (free) | Free key | Development and testing only; not to be displayed to users or used in production | No |
+| Coinbase market data | None | No redistributing, displaying or disseminating market data, or anything derived from it, to third parties without written consent | No |
+| Cboe delayed quotes | None | Its page says downloading the quote data with automated programs is strictly prohibited | No |
+| Alpha Vantage, Polygon (Massive), Alpaca | Free key | Not read in full. Alpha Vantage's 25 requests a day and Polygon's 5 a minute are too small to fail over to | No |
+| Nasdaq `api.nasdaq.com`, Stooq | None | Undocumented and restrictive, or a bot-check page for servers | No |
 
-Verdicts: **Done** is already in this change. **Wire** means I recommend adding it. **Wire with key** needs you to make a free account. **Skip** says why.
+## Sources that are used, or newly wired
 
-| Source | Covers | Key? | Free limit | Measured here | Cloud-IP risk | Terms risk for a public site | Verdict | Why |
-|---|---|---|---|---|---|---|---|---|
-| Yahoo `query1` chart | Stocks, ETFs, indices, FX, futures, crypto, history | No | Unofficial, throttles shared IPs | 200, 0.15 s | High | Unofficial | Done (primary) | Widest coverage, nothing else free matches it |
-| Yahoo `query2` chart | Same data, second host | No | Same | 200, 0.12 s | High, but separate from query1 | Same | Done (failover) | Free retry target; a block on one host often spares the other |
-| Yahoo spark | Price and change for up to 20 symbols per request | No | 21 or more symbols is a 400 | 200, 0.11 s | Medium: 1 request instead of 20 | Same | Done (second chance) | Far fewer requests, so far less throttling; no volume |
-| Cboe delayed quotes | US stocks, ETFs, indices (`_SPX`, `_VIX`) | No | Not published | 200 after a redirect, 0.14 to 0.24 s | Unknown | Unofficial: it is the JSON behind Cboe's own site, terms unclear | Wire, if you accept the risk | Different company and different network path from Yahoo; has price, change, open/high/low, previous close, volume, about 15 minutes delayed. An unknown symbol returns 403 |
-| Coinbase Exchange public API | Crypto tickers, candles | No | About 10 requests/s/IP (recall) | 200, 0.06 to 0.10 s | Low | Public market data endpoints | Wire | Fastest source tested, US company, works from US servers |
-| Kraken public API | Crypto tickers, OHLC | No | About 1 request/s (recall) | 200, 0.15 s | Low | Public endpoints | Wire | Second independent crypto source |
-| Binance.US | Crypto tickers (fewer pairs) | No | Weight-based (recall) | 200, 0.32 s | Low | Public endpoints | Wire (third crypto source) | This is the US sibling of Binance. Global `api.binance.com` returned 451 "restricted location" from a US address, which is the block you noticed |
-| CoinGecko (already used) | Crypto | No | Public tier, a few dozen calls/min (recall) | 200, 0.08 s | Medium | Attribution required | Keep | Already the main crypto source |
-| Bitstamp, Gemini | Crypto tickers | No | Public (recall) | 200, 0.18 and 0.26 s | Low | Public endpoints | Backup only | Extra insurance; not needed unless the others fail |
-| Frankfurter (ECB rates) | FX | No | Not published | 200, 0.32 s | Low | Free, open | Skip for now | OpenTerm already reads the ECB directly; the same source twice adds no resilience |
-| US Treasury FiscalData and yield-curve XML | Rates, yield curve | No | Not published | 200, 0.70 s and 0.26 s | Low | US government data | Wire as the fallback for FRED | FRED needs a key and is a single point of failure for the yield curve |
-| SEC EDGAR, World Bank (already used) | Filings, macro | No | SEC: 10 requests/s | 200, 0.18 s and 0.26 s | Low | Public | Keep | Not part of the Yahoo dependency |
-| Finnhub | Real-time US quotes, company news | Free key | 60 calls/min (their docs) | Not tested (needs a key) | Low | Check the free-plan terms | Wire with key | Best quote fallback: generous rate. Stock candles are Premium, so it cannot back up history |
-| Financial Modeling Prep | Quotes, statements | Free key | 250 calls/day, personal use | Not tested | Low | "Personal use" plan: public display is a grey area | Wire with key, as emergency backup | Enough for a few hundred fallback quotes a day |
-| Tiingo | End-of-day prices, history | Free key | 50 requests/hour, 1000/day | Not tested | Low | Free tier is the "individual" tier | Wire with key, for history only | A real second source of daily history, but a small quota |
-| Alpaca market data | US stocks, IEX feed | Free account keys | 200 calls/min | Not tested | Low | Redistribution limits apply | Wire with key, optional | Generous rate, but IEX-only volume and an account to maintain |
-| Polygon (now Massive) | US stocks | Free key | 5 calls/min, end of day, 2 years of history | Not tested | Low | Check terms | Skip for now | 5 calls a minute is too little to fail over to |
-| Twelve Data | Stocks, forex, crypto | Free key | 8 credits/min, 800/day | Not tested | Low | The free plan says data is for testing and development only and "cannot be displayed to users or used in production" | **Skip** | The limits look fine, but the terms rule it out for a public site. I would not wire it |
-| Alpha Vantage | Stocks, forex, crypto | Free key | 25 requests/day | Not tested | Low | Standard | Skip | 25 a day is not a fallback |
-| Stooq | Stocks, indices | No | n/a | 404 bot-check page | n/a | n/a | Skip | Now serves a challenge page to servers (matches the README note) |
-| Nasdaq `api.nasdaq.com` quote | US stocks | No | Not published | 200, 1.1 s (slowest) | High: known to block automated traffic | Unofficial, restrictive | Skip | Slow, undocumented, and its terms are against automated use |
-| Binance global | Crypto | No | n/a | 451 restricted location | n/a | n/a | Skip | Blocks US addresses |
+| Source | Signup | Terms | Measured here | Role |
+|---|---|---|---|---|
+| Yahoo (`query1`, `query2`, spark) | None | Unofficial endpoints. Yahoo's terms prohibit automated access and commercial reuse without permission: accepted by the owner for this non-commercial project | 200, 0.11 to 0.15 s | Primary, now with retries, host failover and a 20-symbols-per-request fallback |
+| Kraken public ticker | None | No explicit permission for displaying its public prices to third parties was found, and no prohibition either | 200, 0.15 s | New: crypto fallback, first |
+| Binance.US public ticker | None | Same: terms silent. The global `api.binance.com` returns 451 from a US address; Binance.US is the US exchange | 200, 0.32 s | New: crypto fallback, second |
+| US Treasury par yield curve | None, no key, no card | Free "to copy, adapt, redistribute, or otherwise use", commercial or not | 200, 0.26 to 0.32 s | New: fallback for FRED's yield curve; also makes the curve work without a FRED key |
+| CoinGecko (already used) | None observed | Allowed with a visible "Powered by CoinGecko" no smaller than 10px; no selling, sublicensing or syndicating access to the API | 200, 0.08 s | Crypto top 30. The credit was missing from the UI, now added |
+| SEC EDGAR, FRED, ECB, World Bank | None, a free key for FRED | Government or institutional open data; attribution where asked | 200 | Already used, unchanged |
 
-## How I would order them
+None of the sources used needs a card or a new key. The only key in the project is the existing FRED key, and the yield curve no longer depends on it.
 
-- **US stocks and indices:** Yahoo `query1`, then `query2`, then spark, then Cboe, then Finnhub (if you add a key).
-- **Crypto:** CoinGecko, then Coinbase, then Kraken, then Binance.US.
-- **Daily history:** Yahoo, then Tiingo (if you add a key).
-- **Yield curve:** FRED, then US Treasury.
+## What changed in the code
 
-## What I need from you
+- `lib/yahoo.js`: every Yahoo call retries up to four times across both Yahoo hosts with backoff, inside a time budget, at most 8 symbols at once, and a failing symbol is priced through the spark endpoint (20 per request). Quotes answer 502 with no cache header when nothing could be priced.
+- `lib/crypto-fallback.js`: a crypto pair such as BTC-USD that Yahoo cannot price is tried on Kraken, then Binance.US.
+- `lib/treasury.js`: the yield curve falls back from FRED to the US Treasury, in the handler and in the seeder.
+- CoinGecko credit added under the crypto table.
 
-1. Do you accept Cboe's unofficial endpoint as a fallback for US stocks? It is the only keyless second source for equities I found, and the terms are unclear.
-2. Which keys will you create? Finnhub is the one I would start with.
-3. Should the crypto fallback chain (Coinbase, Kraken, Binance.US) go in next? It needs no keys and fixes the Binance block directly.
+## What was not done
+
+- There is no fallback for US stock quotes other than Yahoo itself. Every other free equity source I found forbids showing its data to other people, or its quota is too small. A real second source would be a paid, licensed one.
+- The top-30-by-market-cap table has no fallback: Kraken and Binance.US do not publish market cap, so when CoinGecko fails the old snapshot stays.

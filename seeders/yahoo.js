@@ -1,5 +1,6 @@
 // Yahoo chart endpoint adapter (unofficial, delayed). Returns normalised rows.
 import { yahooFetch, mapLimit, sparkRows } from '../lib/yahoo.js';
+import { cryptoRows } from '../lib/crypto-fallback.js';
 
 const IN_FLIGHT = 8; // symbols fetched at once
 
@@ -22,5 +23,8 @@ export async function fetchRows(rows, opts = {}) {
   // symbols whose chart request kept failing get a second chance through the 20-at-a-time spark endpoint
   const missing = rows.filter(([s]) => !got.has(s));
   if (missing.length) for (const r of await sparkRows(missing, opts)) got.set(r.s, r);
+  // crypto pairs still missing: Kraken, then Binance.US
+  const still = missing.filter(([s]) => !got.has(s));
+  if (still.length) for (const r of await cryptoRows(still, opts)) got.set(r.s, r);
   return rows.map(([s]) => got.get(s)).filter(Boolean); // the caller's order, unknown symbols left out
 }

@@ -1,4 +1,6 @@
 // FRED adapters (free key): US Treasury yield curve and upcoming major economic releases.
+import { latestCurve } from '../lib/treasury.js';
+
 const KEY = () => process.env.FRED_API_KEY;
 const base = 'https://api.stlouisfed.org/fred';
 
@@ -12,9 +14,12 @@ async function latestTwo(id) {
 }
 
 export async function fetchCurve() {
-  if (!KEY()) throw new Error('FRED_API_KEY missing');
-  const res = await Promise.allSettled(CURVE.map(([, id]) => latestTwo(id)));
-  return CURVE.map(([m], i) => (res[i].status === 'fulfilled' ? { m, ...res[i].value } : null)).filter(Boolean);
+  if (KEY()) {
+    const res = await Promise.allSettled(CURVE.map(([, id]) => latestTwo(id)));
+    const out = CURVE.map(([m], i) => (res[i].status === 'fulfilled' ? { m, ...res[i].value } : null)).filter(Boolean);
+    if (out.length) return out;
+  }
+  return latestCurve(); // no key, or FRED gave nothing: the Treasury publishes the same curve with no key
 }
 
 // Releases worth showing on a terminal calendar. FRED also lists hundreds of daily data feeds we skip.

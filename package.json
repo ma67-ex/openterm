@@ -4,6 +4,6 @@
   "description": "Open-source Bloomberg-style market terminal built only on free data sources.",
   "type": "module",
   "scripts": { "start": "node server.js", "seed": "node seeders/run.js --force", "tickers": "node scripts/update-tickers.js",
-    "test": "node scripts/test-backtest.mjs && node scripts/test-yahoo.mjs" },
+    "test": "node scripts/test-backtest.mjs && node scripts/test-yahoo.mjs && node scripts/test-fallbacks.mjs" },
   "license": "MIT"
 }
