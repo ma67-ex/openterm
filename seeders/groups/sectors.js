@@ -1,9 +1,9 @@
 // US sector ETFs: 1D, 1W, 1M, YTD from one 1y chart call each. Also exports the shared chart helper.
-const UA = { 'User-Agent': 'Mozilla/5.0 openterm' };
+import { yahooFetch } from '../../lib/yahoo.js';
 const r2 = (x) => +x.toFixed(2);
 
 export async function yc(sym, range) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=1d`, { headers: UA });
+  const r = await yahooFetch(`/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=1d`, { timeout: 15000, budget: 40000 });
   if (!r.ok) throw new Error(`${sym} ${r.status}`);
   const res = (await r.json()).chart.result[0];
   const q = res.indicators.quote[0].close;
