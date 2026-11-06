@@ -82,50 +82,83 @@ function color(pc) {
   const m = (c, base) => Math.round(base + (c * 0.75 - base) * k);
   return `rgb(${m(r, 40)},${m(g, 40)},${m(b, 40)})`;
 }
-// Tile contents scale with tile size: tiny = ticker only, then + change, + logo, + name and market cap.
+// Tile contents scale with tile size: tiny = ticker, then + change, + name, + logo, + market cap.
 // Logos are served from public/logos (see scripts/update-logos.mjs); a missing one just leaves the text.
+// A dark logo (black Apple, black text marks) would vanish on a dark tile, so it is drawn as a white silhouette.
 const logos = new Map();
 function logo(sym, redraw) {
   let e = logos.get(sym);
   if (!e) {
-    e = { img: new Image(), ok: false };
-    e.img.onload = () => { e.ok = true; redraw(); };
+    e = { img: new Image(), ok: false, dark: false };
+    e.img.onload = () => {
+      const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      c.canvas.width = c.canvas.height = 16;
+      c.drawImage(e.img, 0, 0, 16, 16);
+      const px = c.getImageData(0, 0, 16, 16).data;
+      let sum = 0, n = 0;
+      for (let k = 0; k < px.length; k += 4) if (px[k + 3] > 128) { sum += 0.299 * px[k] + 0.587 * px[k + 1] + 0.114 * px[k + 2]; n++; }
+      e.dark = n > 0 && sum / n < 80;
+      e.ok = true;
+      redraw();
+    };
     e.img.src = `logos/${encodeURIComponent(sym)}.png`; // downloaded once by npm run logos
     logos.set(sym, e);
   }
-  return e.ok ? e.img : null;
+  return e.ok ? e : null;
 }
 const mapViews = new Set(); // every open map; a logo that finishes loading repaints all of them
 let pendMap = 0;
 const redrawMap = () => { if (!pendMap) pendMap = requestAnimationFrame(() => { pendMap = 0; mapViews.forEach((v) => (v.box.isConnected ? v.draw() : mapViews.delete(v))); }); }; // many logos land together: one repaint
+const clip = (g, text, w) => { // shorten text with an ellipsis until it fits w pixels
+  if (g.measureText(text).width <= w) return text;
+  let t = text;
+  while (t.length > 1 && g.measureText(`${t}…`).width > w) t = t.slice(0, -1);
+  return `${t.trimEnd()}…`;
+};
 function drawTile(g, t) {
   const m = Math.min(t.w, t.h);
-  if (m < 22 || t.w < 30) return;
-  const cx = t.x + t.w / 2, pct = `${sgn(t.pc, 1)}%`;
-  const showLogo = m > 46, L = showLogo ? Math.min(56, m * 0.34) : 0;
-  let showName = t.w > 110 && t.h > 110, showCap = showName && t.mc, fs, lines;
-  const fit = () => { // font shrinks until every line fits the tile height
-    lines = 2 + (showName ? 1 : 0) + (showCap ? 1 : 0);
-    fs = Math.min(24, m / 5, (t.h - 6 - (L ? L + 4 : 0)) / (1.25 * lines));
-  };
-  fit();
-  if (fs < 11 && showName) { showName = showCap = false; fit(); } // too cramped for name and cap: keep logo, ticker, change
-  fs = Math.max(9, fs);
-  const total = (L ? L + 4 : 0) + fs * 1.25 * lines;
-  let y = t.y + Math.max(2, (t.h - total) / 2);
+  if (t.w < 18 || t.h < 11) return;
+  const pct = `${sgn(t.pc, 1)}%`, cx = t.x + t.w / 2;
+  const widthFs = (t.w - 4) / (Math.max(t.s.length, 3) * 0.62); // monospace glyph is about 0.6 em wide
+  let L = m > 46 ? Math.min(56, m * 0.34) : 0;
+  const nameOK = t.w >= 60 && t.h >= 34, capOK = t.w > 110 && t.h > 110 && t.mc;
+  // richest combination whose font stays readable; small tiles get ticker, change and name, big ones add the cap
+  const opts = [capOK && [1, 1], nameOK && [1, 0], [0, 0]].filter(Boolean);
+  let pick = null;
+  for (const logoH of L ? [L, 0] : [0]) {
+    for (const [name, cap] of opts) {
+      const lines = 2 + name + cap;
+      const fs = Math.min(24, m / 5, (t.h - 4 - (logoH ? logoH + 4 : 0)) / (1.25 * lines), widthFs);
+      if (fs >= 8) { pick = { name, cap, lines, fs, L: logoH }; break; }
+    }
+    if (pick) break;
+  }
   g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff';
+  if (!pick) { // too small for two lines: ticker only, as large as fits
+    const fs = Math.min(t.h - 3, widthFs, 12);
+    if (fs >= 6) { g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, t.y + (t.h - fs) / 2, t.w - 2); }
+    g.textAlign = 'left'; g.font = '11px monospace';
+    return;
+  }
+  const { name, cap, lines, fs } = pick;
+  L = pick.L;
+  let y = t.y + Math.max(2, (t.h - ((L ? L + 4 : 0) + fs * 1.25 * lines)) / 2);
   if (L) {
-    const img = logo(t.s, redrawMap);
-    g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.roundRect(cx - L / 2, y, L, L, L / 5); g.fill();
-    if (img) g.drawImage(img, cx - L / 2 + L * 0.1, y + L * 0.1, L * 0.8, L * 0.8);
-    y += L + 4; g.fillStyle = '#fff';
+    const e = logo(t.s, redrawMap);
+    if (e) { // no backing square: the logo sits straight on the tile
+      if (e.dark) g.filter = 'brightness(0) invert(1)';
+      g.drawImage(e.img, cx - L / 2, y, L, L);
+      g.filter = 'none';
+    }
+    y += L + 4;
   }
   g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, y, t.w - 4); y += fs * 1.25;
   g.font = `${fs}px monospace`; g.fillText(pct, cx, y, t.w - 4); y += fs * 1.25;
-  g.font = `${Math.max(9, fs * 0.65)}px monospace`;
-  if (showName) { g.globalAlpha = 0.85; g.fillText(t.n, cx, y, t.w - 8); g.globalAlpha = 1; y += fs * 1.25; }
-  if (showCap) { g.globalAlpha = 0.85; g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8); g.globalAlpha = 1; }
-  g.textAlign = 'left'; g.font = '11px monospace';
+  const sf = Math.max(7, fs * 0.65);
+  g.font = `${sf}px monospace`; g.globalAlpha = 0.85;
+  if (name) { g.fillText(clip(g, t.n, t.w - 6), cx, y); y += fs * 1.25; }
+  if (cap) g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8);
+  g.globalAlpha = 1; g.textAlign = 'left'; g.font = '11px monospace';
 }
 // Index members (Nasdaq-100 from Nasdaq's own list, Dow 30 from Wikipedia). The map only has S&P 500 data, so the 15 Nasdaq-100
 // names outside the S&P 500 (ASML, ARM, PDD, MELI, ...) are not drawn. Refresh by hand when an index changes.
