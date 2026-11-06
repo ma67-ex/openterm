@@ -1,6 +1,9 @@
 // Universe snapshot: ~100 US large caps with price, change, volume, 52w range, 1M and YTD change.
 import { UNIVERSE } from '../universe-list.js';
+import { readFileSync } from 'node:fs';
 import { yahooFetch } from '../../lib/yahoo.js';
+
+const SHARES = JSON.parse(readFileSync(new URL('../../data/shares.json', import.meta.url), 'utf8')); // npm run shares
 
 const r2 = (x) => +x.toFixed(2);
 
@@ -19,7 +22,7 @@ async function one({ s, n, sec }) {
   const ytd = bars.find((b) => new Date(b.t * 1000).getUTCFullYear() === new Date(m.regularMarketTime * 1000).getUTCFullYear());
   const chg = (base) => (base ? r2(((last - base) / base) * 100) : null);
   return {
-    s, n, sec, p: r2(last), pc: r2(((last - prev) / prev) * 100), v: m.regularMarketVolume ?? bars.at(-1).v ?? null,
+    s, n, sec, p: r2(last), mc: s in SHARES ? Math.round((SHARES[s] * last) / 1e6) : undefined, // market cap, $ millions; 0 = second class of a company already counted pc: r2(((last - prev) / prev) * 100), v: m.regularMarketVolume ?? bars.at(-1).v ?? null,
     av: vs.length ? Math.round(vs.reduce((a, b) => a + b, 0) / vs.length) : null,
     h52: r2(Math.max(...hs, last)), l52: r2(Math.min(...ls, last)), m1: chg(ago(30)), ytd: chg(ytd?.c),
   };

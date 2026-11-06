@@ -83,7 +83,7 @@ function color(pc) {
   return `rgb(${m(r, 40)},${m(g, 40)},${m(b, 40)})`;
 }
 registerWidget('map', {
-  title: 'MAP  Sector Heatmap', hint: 'MAP',
+  title: 'MAP  S&P 500 by market cap', hint: 'MAP',
   render(box) {
     let tiles = [], ro;
     const draw = () => {
@@ -93,7 +93,9 @@ registerWidget('map', {
       host.insertAdjacentHTML('beforeend', '<div class="eq-tip"></div>');
       const tip = host.querySelector('.eq-tip');
       const bySec = {};
-      rows.forEach((r) => { (bySec[r.sec] ??= []).push({ ...r, w: Math.max((r.v ?? r.av ?? 1) * r.p, 1) }); });
+      const caps = rows.map((r) => r.mc).filter((x) => x > 0).sort((a, b) => a - b), mid = caps[caps.length >> 1] ?? 1;
+      // size by market cap; no cap yet (old snapshot) falls back to the median so the tile still shows; mc 0 is a duplicate share class
+      rows.forEach((r) => { if (r.mc !== 0) (bySec[r.sec] ??= []).push({ ...r, w: r.mc ?? mid }); });
       const secs = Object.entries(bySec).map(([sec, list]) => ({ sec, list, w: list.reduce((a, i) => a + i.w, 0) }));
       tiles = [];
       g.font = '11px monospace'; g.textBaseline = 'top';
@@ -110,7 +112,7 @@ registerWidget('map', {
       c.addEventListener('mousemove', (e) => {
         const t = hit(e);
         if (!t) { tip.style.display = 'none'; return; }
-        tip.innerHTML = `${esc(t.s)} ${esc(t.n)}<br>${esc(t.sec)}<br>${fmt(t.p)}  <span class="${cls(t.pc)}">${sgn(t.pc)}%</span>`;
+        tip.innerHTML = `${esc(t.s)} ${esc(t.n)}<br>${esc(t.sec)}<br>${t.mc ? `$${fmt(t.mc / 1000, 1)}B cap<br>` : ''}${fmt(t.p)}  <span class="${cls(t.pc)}">${sgn(t.pc)}%</span>`;
         tip.style.display = 'block';
         const r = c.getBoundingClientRect();
         tip.style.left = `${Math.min(e.clientX - r.left + 12, W - 150)}px`; tip.style.top = `${Math.min(e.clientY - r.top + 12, H - 50)}px`;
