@@ -17,12 +17,14 @@ for (const tag of ['WeightedAverageNumberOfSharesOutstandingBasic', 'WeightedAve
   }
 
 // Approximate, hand-set where SEC reports no usable total (multi-class or odd XBRL). Refresh by hand now and then.
-const HAND = { 'BRK-B': 2.16e9, V: 1.93e9, C: 1.85e9 };
+// WAT: SEC frame is off by 1000x (98 billion shares), so the hand value wins over SEC.
+const HAND = { 'BRK-B': 2.16e9, V: 1.93e9, C: 1.85e9, WAT: 9.9e7 };
 const out = {}, seen = new Set(), missing = [];
 for (const { s } of UNIVERSE) {
   const cik = tickers[s]?.[0], v = byCik.get(cik);
   // ponytail: a dual-class company reports total shares once, so only its first listed class gets a tile (GOOGL, not GOOG)
-  if (v && !seen.has(cik)) { out[s] = v; seen.add(cik); } else if (v) out[s] = 0; else if (HAND[s]) out[s] = HAND[s]; else missing.push(s);
+  if (HAND[s]) { out[s] = HAND[s]; seen.add(cik); continue; }
+  if (v && !seen.has(cik)) { out[s] = v; seen.add(cik); } else if (v) out[s] = 0; else missing.push(s);
 }
 writeFileSync(new URL('../data/shares.json', import.meta.url), JSON.stringify(out));
 console.log(`${Object.keys(out).length}/${UNIVERSE.length} symbols; no shares: ${missing.join(' ') || 'none'}`);

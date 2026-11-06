@@ -82,6 +82,43 @@ function color(pc) {
   const m = (c, base) => Math.round(base + (c * 0.75 - base) * k);
   return `rgb(${m(r, 40)},${m(g, 40)},${m(b, 40)})`;
 }
+// Tile contents scale with tile size: tiny = ticker only, then + change, + logo, + name and market cap.
+// Logos are free keyless images by ticker; one that fails to load just leaves the text.
+const logos = new Map();
+function logo(sym, redraw) {
+  let e = logos.get(sym);
+  if (!e) {
+    e = { img: new Image(), ok: false };
+    e.img.onload = () => { e.ok = true; redraw(); };
+    e.img.src = `https://financialmodelingprep.com/image-stock/${encodeURIComponent(sym)}.png`;
+    logos.set(sym, e);
+  }
+  return e.ok ? e.img : null;
+}
+let redrawMap = () => {};
+function drawTile(g, t) {
+  const m = Math.min(t.w, t.h);
+  if (m < 22 || t.w < 30) return;
+  const cx = t.x + t.w / 2, fs = Math.max(9, Math.min(24, m / 5)), pct = `${sgn(t.pc, 1)}%`;
+  const showLogo = m > 46, showName = t.w > 110 && t.h > 135, showCap = showName && t.mc;
+  const L = showLogo ? Math.min(56, m * 0.34) : 0;
+  const lines = 2 + (showName ? 1 : 0) + (showCap ? 1 : 0);
+  const total = (L ? L + 4 : 0) + fs * 1.25 * lines;
+  let y = t.y + Math.max(2, (t.h - total) / 2);
+  g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff';
+  if (L) {
+    const img = logo(t.s, () => redrawMap());
+    g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.roundRect(cx - L / 2, y, L, L, L / 5); g.fill();
+    if (img) g.drawImage(img, cx - L / 2 + L * 0.1, y + L * 0.1, L * 0.8, L * 0.8);
+    y += L + 4; g.fillStyle = '#fff';
+  }
+  g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, y, t.w - 4); y += fs * 1.25;
+  g.font = `${fs}px monospace`; g.fillText(pct, cx, y, t.w - 4); y += fs * 1.25;
+  g.font = `${Math.max(9, fs * 0.65)}px monospace`;
+  if (showName) { g.globalAlpha = 0.85; g.fillText(t.n, cx, y, t.w - 8); g.globalAlpha = 1; y += fs * 1.25; }
+  if (showCap) { g.globalAlpha = 0.85; g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8); g.globalAlpha = 1; }
+  g.textAlign = 'left'; g.font = '11px monospace';
+}
 registerWidget('map', {
   title: 'MAP  S&P 500 by market cap', hint: 'MAP',
   render(box) {
@@ -104,7 +141,7 @@ registerWidget('map', {
         treemap(S.list, S.x + 1, S.y + 1 + hd, S.w - 2, S.h - 2 - hd).forEach((t) => {
           tiles.push(t);
           g.fillStyle = color(t.pc); g.fillRect(t.x, t.y, t.w - 1, t.h - 1);
-          if (t.w > 34 && t.h > 24) { g.fillStyle = '#fff'; g.fillText(t.s, t.x + 3, t.y + 3, t.w - 6); g.fillText(`${sgn(t.pc, 1)}%`, t.x + 3, t.y + 15, t.w - 6); }
+          drawTile(g, t);
         });
         if (hd) { g.fillStyle = '#ff9f1a'; g.fillText(S.sec.toUpperCase(), S.x + 3, S.y + 2, S.w - 6); }
       });
@@ -121,6 +158,8 @@ registerWidget('map', {
       c.addEventListener('click', (e) => { const t = hit(e); if (t) runCommand(`GP ${t.s}`); });
     };
     const v = attach(box, draw, () => ro?.disconnect());
+    let pend = 0;
+    redrawMap = () => { if (!pend) pend = requestAnimationFrame(() => { pend = 0; if (box.isConnected) v.draw(); }); }; // many logos land together: one repaint
     let lastW = box.clientWidth, lastH = box.clientHeight;
     ro = new ResizeObserver(() => { if (box.clientWidth !== lastW || box.clientHeight !== lastH) { lastW = box.clientWidth; lastH = box.clientHeight; v.draw(); } });
     ro.observe(box);
