@@ -119,9 +119,17 @@ function drawTile(g, t) {
   if (showCap) { g.globalAlpha = 0.85; g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8); g.globalAlpha = 1; }
   g.textAlign = 'left'; g.font = '11px monospace';
 }
+// Index members (Nasdaq-100 from Nasdaq's own list, Dow 30 from Wikipedia). The map only has S&P 500 data, so the 15 Nasdaq-100
+// names outside the S&P 500 (ASML, ARM, PDD, MELI, ...) are not drawn. Refresh by hand when an index changes.
+const INDEX = {
+  NDX: 'AAPL AMAT AMGN CMCSA INTC KLAC PCAR CTAS PAYX LRCX ADSK ROST MNST MSFT ADBE FAST CSCO REGN IDXX VRTX ODFL QCOM GILD SNPS SBUX INTU MCHP ORLY COST CPRT TTWO AMZN NVDA BKNG ISRG MRVL ADI AEP AMD ADP CDNS CSX HON MAR MU XEL EXC PEP ROP TER TXN WDC WMT AXON MDLZ NFLX STX GOOGL GOOG MPWR DXCM TMUS KDP AVGO FTNT TSLA NXPI FANG META PANW WDAY PYPL LITE BKR MRNA CRWD DDOG PLTR ABNB DASH APP CEG GEHC LIN SNDK'.split(' '),
+  DOW: 'MMM KO NKE GOOGL GS NVDA AMZN HD PG AXP HON CRM AMGN IBM SHW AAPL JNJ TRV BA JPM UNH CAT MCD V CVX MRK WMT CSCO MSFT DIS'.split(' '),
+};
+const mapIndex = (args) => (INDEX[args?.[0]] ? args[0] : null);
 registerWidget('map', {
-  title: 'MAP  S&P 500 by market cap', hint: 'MAP',
-  render(box) {
+  title: (args) => `MAP  ${{ NDX: 'Nasdaq-100', DOW: 'Dow 30' }[mapIndex(args)] ?? 'S&P 500'} by market cap`, hint: 'MAP',
+  render(box, args) {
+    const members = INDEX[mapIndex(args)] && new Set(INDEX[mapIndex(args)]);
     let tiles = [], ro;
     const draw = () => {
       if (!rows) return void (box.innerHTML = msg(loaded ? 'NO DATA YET: SEEDER PENDING' : 'LOADING'));
@@ -130,9 +138,9 @@ registerWidget('map', {
       host.insertAdjacentHTML('beforeend', '<div class="eq-tip"></div>');
       const tip = host.querySelector('.eq-tip');
       const bySec = {};
-      const caps = rows.map((r) => r.mc).filter((x) => x > 0).sort((a, b) => a - b), mid = caps[caps.length >> 1] ?? 1;
+      const caps = rows.filter((r) => !members || members.has(r.s)).map((r) => r.mc).filter((x) => x > 0).sort((a, b) => a - b), mid = caps[caps.length >> 1] ?? 1;
       // size by market cap; no cap yet (old snapshot) falls back to the median so the tile still shows; mc 0 is a duplicate share class
-      rows.forEach((r) => { if (r.mc !== 0) (bySec[r.sec] ??= []).push({ ...r, w: r.mc ?? mid }); });
+      rows.forEach((r) => { if (r.mc !== 0 && (!members || members.has(r.s))) (bySec[r.sec] ??= []).push({ ...r, w: r.mc ?? mid }); });
       const secs = Object.entries(bySec).map(([sec, list]) => ({ sec, list, w: list.reduce((a, i) => a + i.w, 0) }));
       tiles = [];
       g.font = '11px monospace'; g.textBaseline = 'top';
@@ -165,7 +173,7 @@ registerWidget('map', {
     ro.observe(box);
   },
 });
-registerCommand('MAP', { help: 'MAP  sector heatmap of US large caps', run: () => openWidget('map') });
+registerCommand('MAP', { help: 'MAP [NDX|DOW]  heatmap by market cap: S&P 500, Nasdaq-100 or Dow 30', run: (args) => openWidget('map', args) });
 
 // ---- EQS ----
 const COLS = [['s', 'Ticker'], ['n', 'Name'], ['sec', 'Sector'], ['p', 'Last'], ['pc', '%Chg'], ['v', 'Volume'], ['rv', 'RVol'], ['hi', 'vs 52w H'], ['m1', '1M %'], ['ytd', 'YTD %']];
