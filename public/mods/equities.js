@@ -83,14 +83,14 @@ function color(pc) {
   return `rgb(${m(r, 40)},${m(g, 40)},${m(b, 40)})`;
 }
 // Tile contents scale with tile size: tiny = ticker only, then + change, + logo, + name and market cap.
-// Logos are free keyless images by ticker; one that fails to load just leaves the text.
+// Logos are served from public/logos (see scripts/update-logos.mjs); a missing one just leaves the text.
 const logos = new Map();
 function logo(sym, redraw) {
   let e = logos.get(sym);
   if (!e) {
     e = { img: new Image(), ok: false };
     e.img.onload = () => { e.ok = true; redraw(); };
-    e.img.src = `https://financialmodelingprep.com/image-stock/${encodeURIComponent(sym)}.png`;
+    e.img.src = `logos/${encodeURIComponent(sym)}.png`; // downloaded once by npm run logos
     logos.set(sym, e);
   }
   return e.ok ? e.img : null;
