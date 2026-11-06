@@ -4,8 +4,9 @@ import { $, widgets, mountWidget, msg } from './core.js';
 import { renderWall } from './mods/wall.js';
 
 export const PAGES = [
-  { name: 'Home', rows: 6, panels: [['mon', 1, 3, 1, 3], ['map', 4, 6, 1, 3], ['top', 10, 3, 1, 3],
-    ['wei', 1, 3, 4, 3], ['gp', 4, 3, 4, 3, 'AAPL'], ['curve', 7, 3, 4, 3], ['cmdty', 10, 3, 4, 3]] },
+  { name: 'Home', rows: 6, panels: [['mon', 1, 3, 1, 3], ['gp', 4, 6, 1, 3, 'AAPL'], ['top', 10, 3, 1, 2], ['wei', 1, 3, 4, 3],
+    ['fxc', 4, 3, 4, 3], ['curve', 7, 3, 4, 3], ['eco', 10, 3, 3, 2], ['cmdty', 10, 3, 5, 2]] },
+  { name: 'Map', rows: 6, panels: [['map', 1, 8, 1, 6], ['map', 9, 4, 1, 3, 'NDX'], ['map', 9, 4, 4, 3, 'DOW']] },
   { name: 'Markets', rows: 6, panels: [['wei', 1, 4, 1, 3], ['sectors', 5, 4, 1, 3], ['map', 9, 4, 1, 3],
     ['futures', 1, 4, 4, 3], ['crypto', 5, 4, 4, 3], ['vix', 9, 4, 4, 3]] },
   { name: 'Equities', rows: 6, panels: [['mon', 1, 3, 1, 3], ['gp', 4, 6, 1, 3, 'AAPL'], ['most', 10, 3, 1, 3],

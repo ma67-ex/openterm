@@ -95,7 +95,9 @@ function logo(sym, redraw) {
   }
   return e.ok ? e.img : null;
 }
-let redrawMap = () => {};
+const mapViews = new Set(); // every open map; a logo that finishes loading repaints all of them
+let pendMap = 0;
+const redrawMap = () => { if (!pendMap) pendMap = requestAnimationFrame(() => { pendMap = 0; mapViews.forEach((v) => (v.box.isConnected ? v.draw() : mapViews.delete(v))); }); }; // many logos land together: one repaint
 function drawTile(g, t) {
   const m = Math.min(t.w, t.h);
   if (m < 22 || t.w < 30) return;
@@ -113,7 +115,7 @@ function drawTile(g, t) {
   let y = t.y + Math.max(2, (t.h - total) / 2);
   g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff';
   if (L) {
-    const img = logo(t.s, () => redrawMap());
+    const img = logo(t.s, redrawMap);
     g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.roundRect(cx - L / 2, y, L, L, L / 5); g.fill();
     if (img) g.drawImage(img, cx - L / 2 + L * 0.1, y + L * 0.1, L * 0.8, L * 0.8);
     y += L + 4; g.fillStyle = '#fff';
@@ -172,8 +174,7 @@ registerWidget('map', {
       c.addEventListener('click', (e) => { const t = hit(e); if (t) runCommand(`GP ${t.s}`); });
     };
     const v = attach(box, draw, () => ro?.disconnect());
-    let pend = 0;
-    redrawMap = () => { if (!pend) pend = requestAnimationFrame(() => { pend = 0; if (box.isConnected) v.draw(); }); }; // many logos land together: one repaint
+    mapViews.add(v);
     let lastW = box.clientWidth, lastH = box.clientHeight;
     ro = new ResizeObserver(() => { if (box.clientWidth !== lastW || box.clientHeight !== lastH) { lastW = box.clientWidth; lastH = box.clientHeight; v.draw(); } });
     ro.observe(box);
