@@ -36,13 +36,15 @@ button{font:inherit;cursor:pointer}
 #tabs{display:flex;background:var(--bar);flex:none;overflow-x:auto}
 #tabs button{flex:none;white-space:nowrap;background:transparent;border:0;border-right:1px solid #000;color:var(--mute);padding:4px 14px}
 #tabs button.on{background:#000;color:var(--amber);border-top:2px solid var(--amber)}
+#tabs button:hover:not(.on){color:var(--txt)}
 
 /* grid of panels */
-#grid{flex:1;min-height:0;display:grid;gap:2px;background:var(--line);padding:2px;
+#grid{flex:1;min-height:0;display:grid;gap:6px;background:#000;padding:6px;
   grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))}
-.panel{background:var(--panel);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
-.ph{display:flex;align-items:center;gap:8px;background:var(--bar);padding:2px 6px;flex:none;border-bottom:1px solid #000}
-.ph b{background:var(--amber);color:#000;padding:0 5px;font-size:11px}
+.panel{background:var(--panel);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid #1f1f1f;border-radius:8px;transition:border-color .15s,box-shadow .15s}
+.panel:hover{border-color:var(--amber-dim);box-shadow:0 0 0 1px rgba(255,159,26,.15),0 4px 18px rgba(0,0,0,.6)}
+.ph{display:flex;align-items:center;gap:8px;background:linear-gradient(#222,#161616);padding:4px 8px;flex:none;border-bottom:1px solid #000}
+.ph b{background:var(--amber);color:#000;padding:0 6px;font-size:11px;border-radius:3px}
 .ph h2{font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.5px;flex:1}
 .ph span{color:var(--mute);font-size:10px}
 .pb{flex:1;min-height:0;overflow:auto}

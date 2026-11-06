@@ -99,10 +99,16 @@ let redrawMap = () => {};
 function drawTile(g, t) {
   const m = Math.min(t.w, t.h);
   if (m < 22 || t.w < 30) return;
-  const cx = t.x + t.w / 2, fs = Math.max(9, Math.min(24, m / 5)), pct = `${sgn(t.pc, 1)}%`;
-  const showLogo = m > 46, showName = t.w > 110 && t.h > 135, showCap = showName && t.mc;
-  const L = showLogo ? Math.min(56, m * 0.34) : 0;
-  const lines = 2 + (showName ? 1 : 0) + (showCap ? 1 : 0);
+  const cx = t.x + t.w / 2, pct = `${sgn(t.pc, 1)}%`;
+  const showLogo = m > 46, L = showLogo ? Math.min(56, m * 0.34) : 0;
+  let showName = t.w > 110 && t.h > 110, showCap = showName && t.mc, fs, lines;
+  const fit = () => { // font shrinks until every line fits the tile height
+    lines = 2 + (showName ? 1 : 0) + (showCap ? 1 : 0);
+    fs = Math.min(24, m / 5, (t.h - 6 - (L ? L + 4 : 0)) / (1.25 * lines));
+  };
+  fit();
+  if (fs < 11 && showName) { showName = showCap = false; fit(); } // too cramped for name and cap: keep logo, ticker, change
+  fs = Math.max(9, fs);
   const total = (L ? L + 4 : 0) + fs * 1.25 * lines;
   let y = t.y + Math.max(2, (t.h - total) / 2);
   g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff';
@@ -148,7 +154,7 @@ registerWidget('map', {
         const hd = S.h > 40 && S.w > 60 ? 13 : 0;
         treemap(S.list, S.x + 1, S.y + 1 + hd, S.w - 2, S.h - 2 - hd).forEach((t) => {
           tiles.push(t);
-          g.fillStyle = color(t.pc); g.fillRect(t.x, t.y, t.w - 1, t.h - 1);
+          g.fillStyle = color(t.pc); g.beginPath(); g.roundRect(t.x + 0.5, t.y + 0.5, t.w - 2, t.h - 2, Math.min(4, t.w / 6, t.h / 6)); g.fill(); // small gap and rounded corners
           drawTile(g, t);
         });
         if (hd) { g.fillStyle = '#ff9f1a'; g.fillText(S.sec.toUpperCase(), S.x + 3, S.y + 2, S.w - 6); }
