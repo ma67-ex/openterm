@@ -76,11 +76,10 @@ function treemap(items, x, y, w, h) {
   }
   return out;
 }
-function color(pc) {
-  const t = Math.max(-1, Math.min(1, (pc ?? 0) / 3)), k = Math.abs(t);
-  const [r, g, b] = t >= 0 ? [46, 204, 113] : [255, 77, 77];
-  const m = (c, base) => Math.round(base + (c * 0.75 - base) * k);
-  return `rgb(${m(r, 40)},${m(g, 40)},${m(b, 40)})`;
+function color(pc) { // dark green/red for flat days, bright green/red from about 3% and up
+  const k = Math.min(1, Math.abs(pc ?? 0) / 3);
+  const [lo, hi] = (pc ?? 0) >= 0 ? [[27, 58, 33], [52, 184, 62]] : [[66, 27, 27], [226, 52, 44]];
+  return `rgb(${lo.map((c, n) => Math.round(c + (hi[n] - c) * k)).join(',')})`;
 }
 // Tile contents scale with tile size: tiny = ticker, then + change, + name, + logo, + market cap.
 // Logos are served from public/logos (see scripts/update-logos.mjs); a missing one just leaves the text.
@@ -89,7 +88,8 @@ const logos = new Map();
 function logo(sym, redraw) {
   let e = logos.get(sym);
   if (!e) {
-    e = { img: new Image(), ok: false, dark: false };
+    e = { img: new Image(), ok: false, bad: false, dark: false };
+    e.img.onerror = () => { e.bad = true; redraw(); };
     e.img.onload = () => {
       const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
       c.canvas.width = c.canvas.height = 16;
@@ -104,7 +104,7 @@ function logo(sym, redraw) {
     e.img.src = `logos/${encodeURIComponent(sym)}.png`; // downloaded once by npm run logos
     logos.set(sym, e);
   }
-  return e.ok ? e : null;
+  return e;
 }
 const mapViews = new Set(); // every open map; a logo that finishes loading repaints all of them
 let pendMap = 0;
@@ -115,50 +115,57 @@ const clip = (g, text, w) => { // shorten text with an ellipsis until it fits w 
   while (t.length > 1 && g.measureText(`${t}…`).width > w) t = t.slice(0, -1);
   return `${t.trimEnd()}…`;
 };
+const drawLogo = (g, e, cx, y, L) => {
+  if (e.dark) g.filter = 'brightness(0) invert(1)';
+  g.drawImage(e.img, cx - L / 2, y, L, L);
+  g.filter = 'none';
+};
 function drawTile(g, t) {
   const m = Math.min(t.w, t.h);
-  if (t.w < 18 || t.h < 11) return;
+  if (t.w < 12 || t.h < 12) return;
   const pct = `${sgn(t.pc, 1)}%`, cx = t.x + t.w / 2;
-  const widthFs = (t.w - 4) / (Math.max(t.s.length, 3) * 0.62); // monospace glyph is about 0.6 em wide
-  let L = m > 46 ? Math.min(56, m * 0.34) : 0;
-  const nameOK = t.w >= 60 && t.h >= 34, capOK = t.w > 110 && t.h > 110 && t.mc;
-  // richest combination whose font stays readable; small tiles get ticker, change and name, big ones add the cap
-  const opts = [capOK && [1, 1], nameOK && [1, 0], [0, 0]].filter(Boolean);
-  let pick = null;
-  for (const logoH of L ? [L, 0] : [0]) {
-    for (const [name, cap] of opts) {
-      const lines = 2 + name + cap;
-      const fs = Math.min(24, m / 5, (t.h - 4 - (logoH ? logoH + 4 : 0)) / (1.25 * lines), widthFs);
-      if (fs >= 8) { pick = { name, cap, lines, fs, L: logoH }; break; }
-    }
-    if (pick) break;
-  }
+  const e = logo(t.s, redrawMap), hasLogo = e.ok;
   g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff';
-  if (!pick) { // too small for two lines: ticker only, as large as fits
-    const fs = Math.min(t.h - 3, widthFs, 12);
-    if (fs >= 6) { g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, t.y + (t.h - fs) / 2, t.w - 2); }
-    g.textAlign = 'left'; g.font = '11px monospace';
-    return;
-  }
-  const { name, cap, lines, fs } = pick;
-  L = pick.L;
-  let y = t.y + Math.max(2, (t.h - ((L ? L + 4 : 0) + fs * 1.25 * lines)) / 2);
-  if (L) {
-    const e = logo(t.s, redrawMap);
-    if (e) { // no backing square: the logo sits straight on the tile
-      if (e.dark) g.filter = 'brightness(0) invert(1)';
-      g.drawImage(e.img, cx - L / 2, y, L, L);
-      g.filter = 'none';
+  const done = () => { g.globalAlpha = 1; g.textAlign = 'left'; g.font = '11px monospace'; };
+  const widthFs = (t.w - 4) / (Math.max(t.s.length, 3) * 0.62); // monospace glyph is about 0.6 em wide
+  // 1. large tile: logo, ticker, change, then name and market cap while the font stays readable
+  if (m > 46 && !e.bad) {
+    const L = Math.min(56, m * 0.34);
+    const nameOK = t.w >= 60 && t.h >= 34, capOK = t.w > 110 && t.h > 110 && t.mc;
+    for (const [name, cap] of [capOK && [1, 1], nameOK && [1, 0], [0, 0]].filter(Boolean)) {
+      const lines = 2 + name + cap, fs = Math.min(24, m / 5, (t.h - 4 - L - 4) / (1.25 * lines), widthFs);
+      if (fs < 8) continue;
+      let y = t.y + Math.max(2, (t.h - (L + 4 + fs * 1.25 * lines)) / 2);
+      if (hasLogo) drawLogo(g, e, cx, y, L);
+      y += L + 4;
+      g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, y, t.w - 4); y += fs * 1.25;
+      g.font = `${fs}px monospace`; g.fillText(pct, cx, y, t.w - 4); y += fs * 1.25;
+      g.font = `${Math.max(7, fs * 0.65)}px monospace`; g.globalAlpha = 0.85;
+      if (name) { g.fillText(clip(g, t.n, t.w - 6), cx, y); y += fs * 1.25; }
+      if (cap) g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8);
+      return done();
     }
-    y += L + 4;
   }
-  g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, y, t.w - 4); y += fs * 1.25;
-  g.font = `${fs}px monospace`; g.fillText(pct, cx, y, t.w - 4); y += fs * 1.25;
-  const sf = Math.max(7, fs * 0.65);
-  g.font = `${sf}px monospace`; g.globalAlpha = 0.85;
-  if (name) { g.fillText(clip(g, t.n, t.w - 6), cx, y); y += fs * 1.25; }
-  if (cap) g.fillText(`$${t.mc >= 1e6 ? fmt(t.mc / 1e6, 2) + 'T' : fmt(t.mc / 1e3, 1) + 'B'}`, cx, y, t.w - 8);
-  g.globalAlpha = 1; g.textAlign = 'left'; g.font = '11px monospace';
+  // 2. medium tile: logo with the change under it
+  if (m >= 28 && hasLogo) {
+    const fs = Math.max(7, Math.min(12, m / 6)), L = Math.min(m * 0.42, t.h - fs * 1.4 - 6);
+    if (L >= 10) {
+      const y = t.y + (t.h - (L + 3 + fs)) / 2;
+      drawLogo(g, e, cx, y, L);
+      g.font = `${fs}px monospace`; g.fillText(pct, cx, y + L + 3, t.w - 2);
+      return done();
+    }
+  }
+  // 3. small tile: just the logo
+  if (hasLogo) { const L = Math.min(t.w, t.h) * 0.68; drawLogo(g, e, cx, t.y + (t.h - L) / 2, L); return done(); }
+  // 4. no logo (still loading, or none exists): ticker, and the change when there is room
+  const fs = Math.min(t.h - 3, widthFs, m > 28 ? 11 : 9);
+  if (fs >= 6) {
+    const two = t.h >= fs * 2.6 + 2;
+    g.font = `bold ${fs}px monospace`; g.fillText(t.s, cx, t.y + (t.h - fs * (two ? 2.25 : 1)) / 2, t.w - 2);
+    if (two) { g.font = `${fs}px monospace`; g.fillText(pct, cx, t.y + (t.h - fs * 2.25) / 2 + fs * 1.25, t.w - 2); }
+  }
+  done();
 }
 // Index members (Nasdaq-100 from Nasdaq's own list, Dow 30 from Wikipedia). The map only has S&P 500 data, so the 15 Nasdaq-100
 // names outside the S&P 500 (ASML, ARM, PDD, MELI, ...) are not drawn. Refresh by hand when an index changes.
@@ -178,22 +185,14 @@ registerWidget('map', {
       const host = box.firstChild, { c, g, W, H } = canvas(host);
       host.insertAdjacentHTML('beforeend', '<div class="eq-tip"></div>');
       const tip = host.querySelector('.eq-tip');
-      const bySec = {};
       const caps = rows.filter((r) => !members || members.has(r.s)).map((r) => r.mc).filter((x) => x > 0).sort((a, b) => a - b), mid = caps[caps.length >> 1] ?? 1;
-      // size by market cap; no cap yet (old snapshot) falls back to the median so the tile still shows; mc 0 is a duplicate share class
-      rows.forEach((r) => { if (r.mc !== 0 && (!members || members.has(r.s))) (bySec[r.sec] ??= []).push({ ...r, w: r.mc ?? mid }); });
-      const secs = Object.entries(bySec).map(([sec, list]) => ({ sec, list, w: list.reduce((a, i) => a + i.w, 0) }));
-      tiles = [];
-      g.font = '11px monospace'; g.textBaseline = 'top';
-      treemap(secs, 0, 0, W, H).forEach((S) => {
-        const hd = S.h > 40 && S.w > 60 ? 13 : 0;
-        treemap(S.list, S.x + 1, S.y + 1 + hd, S.w - 2, S.h - 2 - hd).forEach((t) => {
-          tiles.push(t);
-          g.fillStyle = color(t.pc); g.beginPath(); g.roundRect(t.x + 0.5, t.y + 0.5, t.w - 2, t.h - 2, Math.min(4, t.w / 6, t.h / 6)); g.fill(); // small gap and rounded corners
-          drawTile(g, t);
-        });
-        if (hd) { g.fillStyle = '#ff9f1a'; g.fillText(S.sec.toUpperCase(), S.x + 3, S.y + 2, S.w - 6); }
-      });
+      // one flat treemap sized by market cap; no cap yet (old snapshot) falls back to the median so the tile still shows; mc 0 is a duplicate share class
+      const list = rows.filter((r) => r.mc !== 0 && (!members || members.has(r.s))).map((r) => ({ ...r, w: r.mc ?? mid }));
+      tiles = treemap(list, 0, 0, W, H);
+      g.textBaseline = 'top';
+      tiles.forEach((t) => { g.fillStyle = color(t.pc); g.fillRect(t.x, t.y, t.w, t.h); drawTile(g, t); });
+      g.strokeStyle = '#0a0a0a'; g.lineWidth = 1; // thin dark seams between tiles
+      tiles.forEach((t) => g.strokeRect(t.x + 0.5, t.y + 0.5, t.w - 1, t.h - 1));
       const hit = (e) => { const r = c.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; return tiles.find((t) => x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h); };
       c.addEventListener('mousemove', (e) => {
         const t = hit(e);
